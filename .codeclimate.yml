@@ -1,0 +1,27 @@
+version: "2"
+plugins:
+  pep8:
+    enabled: true
+  fixme:
+    enabled: true
+    config:
+      strings:
+      - FIXME
+  radon:
+    enabled: true
+    config:
+      python_version: 3
+  duplication:
+    enabled: true
+    config:
+      languages:
+        python:
+          python_version: 3
+  sonar-python:
+    enabled: true
+    config:
+      minimum_severity: major
+  csslint:
+    enabled: true
+  rubocop:
+    enabled: false

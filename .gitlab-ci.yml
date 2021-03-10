@@ -1,0 +1,49 @@
+stages:
+  - test
+
+workflow:
+  rules:
+    # don't create a pipeline if its a commit pipeline, on a branch and that branch has open merge requests (bc we will get a MR build instead)
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - when: always
+
+.code-quality:
+  stage: test
+  tags:
+    - docker
+  image: docker:stable
+  allow_failure: true
+  variables:
+    CI_DEBUG_TRACE: "false"
+    REPORT_FORMAT: "json"
+  script:
+    - echo $REPORT_FORMAT
+    - CONTAINER_ID=$(docker ps -q -f "label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID}")
+    - VOLUME_PATH=$(docker inspect $CONTAINER_ID --format '{{ range .Mounts }}{{ if eq .Destination "/builds" }}{{ .Source }}{{ end }}{{ end }}')
+    - VOLUME_CODE_PATH="${VOLUME_PATH}/${CI_PROJECT_DIR#$CI_BUILDS_DIR}"
+    - docker run
+        --rm
+        --env SOURCE_CODE=$VOLUME_CODE_PATH
+        --env REPORT_FORMAT=$REPORT_FORMAT
+        --env CODECLIMATE_DEV=1
+        --volume /var/run/docker.sock:/var/run/docker.sock
+        --volume $VOLUME_CODE_PATH:/code
+        registry.gitlab.com/gitlab-org/ci-cd/codequality:latest /code
+  artifacts:
+    expire_in: 1 week
+  dependencies: []
+
+code-quality-json:
+  extends: .code-quality
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    paths: [gl-code-quality-report.json]
+
+code-quality-html:
+  extends: .code-quality
+  variables:
+    REPORT_FORMAT: "html"
+  artifacts:
+    paths: [gl-code-quality-report.html]

@@ -1,0 +1,22 @@
+# python
+__pycache__
+
+# python wheel
+build
+dist
+*.pyc
+*.egg-info
+*.whl
+
+# sphinx docs
+docs/_build
+
+# vs code
+.vs
+.vscode/
+
+# vs code python extensions
+.pylintrc
+
+# misc
+test.py

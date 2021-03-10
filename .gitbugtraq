@@ -1,0 +1,4 @@
+[bugtraq "redmine"]
+  url = http://redmine.benderrobotics.com/issues/%BUGID%
+  loglinkregex = "#\\d+"
+  logregex = \\d+
