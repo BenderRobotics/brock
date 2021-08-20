@@ -1,0 +1,6 @@
+project:
+  name: brock
+toolchain:
+  image: python:3.9
+  platform: linux
+  volume_sync: rsync
