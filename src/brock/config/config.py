@@ -40,7 +40,7 @@ class Config(Munch):
         # merge config files
         try:
             self._log.extra_info("Merging config files")
-            conf = hiyapyco.load(config_files)
+            conf = hiyapyco.load(config_files, method=hiyapyco.METHOD_MERGE)
             self._log.debug(f"Merged config: {conf}")
         except hiyapyco.HiYaPyCoImplementationException as ex:
             raise ConfigError(f"Failed to process config files: {ex}")
