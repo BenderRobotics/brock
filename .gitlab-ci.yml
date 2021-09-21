@@ -85,12 +85,14 @@ build-release-changelog:
     - docker
   rules:
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/
+  before_script:
+    - pip install -i https://pypi.benderrobotics.com gitlab_tools
   script:
     - VERSION=$(python setup.py --version)
-    - python build/get_changes.py v${VERSION} > changes.txt
+    - gitlab-tools tag-changelog -t $API_TOKEN -u $CI_SERVER_URL -p $CI_PROJECT_PATH -o changes.md
   artifacts:
     paths:
-      - "changes.txt"
+      - "changes.md"
     expire_in: 1 days
 
 deploy-wheel:
@@ -136,7 +138,7 @@ release:
   script:
     - TAG_VERSION=${CI_COMMIT_TAG#"v"}
     - test $VERSION = $TAG_VERSION
-    - DESCRIPTION=$(cat changes.txt)
+    - DESCRIPTION=$(cat changes.md)
     - |
       release-cli create --name "Release of Brock $CI_COMMIT_TAG" --tag-name $CI_COMMIT_TAG --milestone "$CI_COMMIT_TAG" \
         --description "$DESCRIPTION" \
