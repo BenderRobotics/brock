@@ -126,10 +126,12 @@ class Toolchain:
         if self._volume_sync == "rsync":
             self._rsync_in()
 
-        self._exec_command(self._name, command, self._work_dir)
+        exit_code = self._exec_command(self._name, command, self._work_dir)
 
         if self._volume_sync == "rsync":
             self._rsync_out()
+
+        return exit_code
 
     def _pull_image(self, image_name, image_tag, platform):
         self._log.extra_info(f"Pulling image {image_name}:{image_tag}")
@@ -191,20 +193,30 @@ class Toolchain:
             raise ToolchainError(f"Failed to get container info: {ex}")
 
         try:
-            res = container.exec_run(command, stream=True, demux=True, workdir=work_dir)
+            exec_id = container.client.api.exec_create(
+                container.id, command, workdir=work_dir)['Id']
+            output = container.client.api.exec_start(
+                exec_id, stream=True, demux=True)
+
+            try:
+                for chunk in output:
+                    if chunk[0]:
+                        for line in chunk[0].split(b"\n"):
+                            self._log.stdout(line.decode())
+                    if chunk[1]:
+                        for line in chunk[1].split(b"\n"):
+                            self._log.stderr(line.decode())
+            except KeyboardInterrupt:
+                self._log.warning("Execution interrupted")
+
+            res = container.client.api.exec_inspect(exec_id)
+            exit_code = res['ExitCode']
+
+            self._log.debug(f"Exit code: {exit_code}")
+
+            return exit_code
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to execute command: {ex}")
-
-        try:
-            for chunk in res.output:
-                if chunk[0]:
-                    for line in chunk[0].split(b"\n"):
-                        self._log.stdout(line.decode())
-                if chunk[1]:
-                    for line in chunk[1].split(b"\n"):
-                        self._log.stderr(line.decode())
-        except KeyboardInterrupt:
-            self._log.warning("Execution interrupted")
 
     def _create_volume(self, name):
         try:
@@ -234,4 +246,8 @@ class Toolchain:
             f"{self._HOST_PATH}/{self._work_dir_rel}")
 
     def _rsync(self, src, dest, options=['-a', '--delete']):
-        self._exec_command(f"{self._rsync_name}", f"rsync {' '.join(options)} {src}/ {dest}", "/")
+        exit_code = self._exec_command(
+            f"{self._rsync_name}",
+            f"rsync {' '.join(options)} {src}/ {dest}", "/")
+        if exit_code != 0:
+            raise ToolchainError(f"Failed to rsync data")

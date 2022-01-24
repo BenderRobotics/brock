@@ -1,7 +1,7 @@
 import click
 
 from brock.log import getLogger
-from brock.exception import ConfigError, UsageError
+from brock.exception import UsageError
 from brock.config.config import Config
 from brock.toolchain.toolchain import Toolchain
 from .shared import shared_arguments, pass_state
@@ -90,4 +90,6 @@ def exec(state, ctx):
     log.info(f"Executing command")
 
     toolchain = Toolchain(config)
-    toolchain.exec(cmd)
+    exit_code = toolchain.exec(cmd)
+
+    return exit_code

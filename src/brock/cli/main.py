@@ -1,7 +1,7 @@
 import sys
 import click
 import logging.config
-from click.exceptions import ClickException, UsageError
+from click.exceptions import ClickException
 
 from brock.exception import BaseBrockException
 from brock import __version__
@@ -40,7 +40,8 @@ def main(args=None):
 
         with ctx:
             result = cli.invoke(ctx)
-
+            if result is not None:
+                exit(result)
     except ClickException as ex:
         log.error(ex.message)
         exit(ex.exit_code)
