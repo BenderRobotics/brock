@@ -30,6 +30,9 @@ class Executor:
     def restart(self):
         return 0
 
+    def update(self):
+        pass
+
     def exec(self, command: str, chdir: Optional[str] = None) -> int:
         raise NotImplementedError
 

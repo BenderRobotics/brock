@@ -44,6 +44,14 @@ class CustomCommandGroup(click.Group):
 @click.version_option(__version__)
 @click.option('--stop', is_flag=False, flag_value='all', default=None, help='Stop project', metavar='[EXECUTOR]')
 @click.option(
+    '--update',
+    is_flag=False,
+    flag_value='all',
+    default=None,
+    help='Update the executor (pull docker image, ...)',
+    metavar='[EXECUTOR]'
+)
+@click.option(
     '-r',
     '--restart',
     is_flag=False,
@@ -55,10 +63,12 @@ class CustomCommandGroup(click.Group):
 @click.option('-s', '--status', is_flag=True, help='Show state of the project')
 @click.pass_context
 @shared_arguments
-def cli(ctx, stop, restart, status):
+def cli(ctx, stop, update, restart, status):
     if ctx.invoked_subcommand is None:
         if stop:
             ctx.obj.project.stop(None if stop == 'all' else stop)
+        elif update:
+            ctx.obj.project.update(None if update == 'all' else update)
         elif restart:
             ctx.obj.project.restart(None if restart == 'all' else restart)
         elif status:

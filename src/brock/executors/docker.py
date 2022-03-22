@@ -2,6 +2,7 @@ import os
 import docker
 import hashlib
 import sys
+import time
 
 from typing import Optional
 from brock.executors import Executor
@@ -115,7 +116,17 @@ class DockerExecutor(Executor):
 
     def restart(self) -> int:
         self.stop()
+        time.sleep(1)
         return self._start()
+
+    def update(self):
+        if self._dockerfile:
+            self._build()
+        else:
+            self._pull_image(self._image_name, self._image_tag, self._platform)
+
+        if self._is_running():
+            self.restart()
 
     def _is_running(self):
         if not self._is_container_running(self._name):
@@ -144,12 +155,6 @@ class DockerExecutor(Executor):
         except docker.errors.APIError as ex:
             raise ExecutorError(f'Failed to stop container: {ex}')
 
-    def _pull(self):
-        self._pull_image(self._image_name, self._image_tag, self._platform)
-
-        if self._volume_sync == 'rsync':
-            self._pull_image(self._RSYNC_IMAGE_NAME, self._RSYNC_IMAGE_TAG, self._RSYNC_PLATFORM)
-
     def _build(self):
         self._log.info(f'Building Docker image from {self._dockerfile}')
         dockerfile = os.path.join(self._base_dir, self._dockerfile)
@@ -175,6 +180,9 @@ class DockerExecutor(Executor):
                 }
             }
 
+            if not self._image_exists(self._RSYNC_IMAGE_NAME, self._RSYNC_IMAGE_TAG):
+                self._pull_image(self._RSYNC_IMAGE_NAME, self._RSYNC_IMAGE_TAG, self._RSYNC_PLATFORM)
+
             self._start_container(
                 f'{self._rsync_name}',
                 self._RSYNC_IMAGE_NAME,
@@ -190,10 +198,8 @@ class DockerExecutor(Executor):
         else:
             volumes = {self._base_dir: {'bind': self._mount_dir, 'mode': 'rw'}}
 
-        if self._dockerfile:
-            self._build()
-        else:
-            self._pull()
+        if not self._image_exists(self._image_name, self._image_tag):
+            self.update()
 
         isolation = self._get_isolation(self._image_name, self._image_tag)
         self._start_container(
@@ -220,6 +226,13 @@ class DockerExecutor(Executor):
             self._log.debug(res)
         except docker.errors.APIError as ex:
             raise ExecutorError(f'Failed to pull image: {ex}')
+
+    def _image_exists(self, image_name, image_tag):
+        try:
+            self._docker.images.get(f'{image_name}:{image_tag}')
+        except docker.errors.ImageNotFound:
+            return False
+        return True
 
     def _get_isolation(self, image_name, image_tag):
         if self._platform != 'windows':

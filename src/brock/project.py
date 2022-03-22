@@ -78,6 +78,13 @@ class Project:
             else:
                 raise ConfigError(f"Unknown executor type '{executor.type}'")
 
+    def _get_selected_executors(self, executor_name: Optional[str] = None) -> List[Executor]:
+        if executor_name is not None:
+            if executor_name not in self._executors:
+                raise ConfigError(f'Unknown executor {executor_name}')
+            return [self._executors[executor_name]]
+        return list(self._executors.values())
+
     def on_exit(self):
         for executor in self._executors.values():
             executor.on_exit()
@@ -105,24 +112,16 @@ class Project:
                 print(f'{name}: {executor.status()}')
 
     def stop(self, executor_name: Optional[str] = None):
-        if executor_name is not None:
-            if executor_name not in self._executors:
-                raise ConfigError(f'Unknown executor {executor_name}')
-            self._executors[executor_name].stop()
-            return
-
-        for executor in self._executors.values():
+        for executor in self._get_selected_executors(executor_name):
             executor.stop()
 
     def restart(self, executor_name: Optional[str] = None):
-        if executor_name is not None:
-            if executor_name not in self._executors:
-                raise ConfigError(f'Unknown executor {executor_name}')
-            self._executors[executor_name].restart()
-            return
-
-        for executor in self._executors.values():
+        for executor in self._get_selected_executors(executor_name):
             executor.restart()
+
+    def update(self, executor_name: Optional[str] = None):
+        for executor in self._get_selected_executors(executor_name):
+            executor.update()
 
     def exec(self, command: Optional[str] = None) -> int:
         if command is None:
