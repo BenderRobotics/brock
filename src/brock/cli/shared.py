@@ -9,6 +9,7 @@ class State:
         self.verbosity = 0
         self.no_color = False
         self.project = project
+        self.error = None
 
 
 pass_state = click.make_pass_decorator(State)

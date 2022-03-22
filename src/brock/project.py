@@ -56,7 +56,8 @@ class Project:
     _default_command: Optional[str] = None
 
     def __init__(self, config: Config):
-        self._default_executor = config.executors.get('default', None)
+        executors = config.get('executors', {})
+        self._default_executor = executors.get('default', None)
 
         commands = config.get('commands', {})
         for name, cmd in commands.items():
@@ -68,7 +69,7 @@ class Project:
             self._commands[name] = Command(cmd)
 
         self._executors['host'] = ShellExecutor(Config, 'shell', 'Execute command on host computer')
-        for name, executor in config.executors.items():
+        for name, executor in executors.items():
             if name == 'default':
                 continue
             elif executor.type == 'docker':

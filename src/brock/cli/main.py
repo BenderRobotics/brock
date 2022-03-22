@@ -2,11 +2,12 @@ import sys
 import click
 import collections
 import logging.config
+from munch import Munch
 from typing import Dict, Tuple
 from click.exceptions import ClickException
 from .shared import shared_arguments, State, pass_state
 
-from brock.exception import BaseBrockException
+from brock.exception import BaseBrockException, ConfigError, UsageError
 from brock.project import Project
 from brock.config.config import Config
 from brock import __version__
@@ -64,6 +65,11 @@ class CustomCommandGroup(click.Group):
 @click.pass_context
 @shared_arguments
 def cli(ctx, stop, update, restart, status):
+    state = ctx.find_object(State)
+    # allow running --help and --version even if config parsing failed
+    if state.error:
+        raise state.error
+
     if ctx.invoked_subcommand is None:
         if stop:
             ctx.obj.project.stop(None if stop == 'all' else stop)
@@ -75,8 +81,9 @@ def cli(ctx, stop, update, restart, status):
             ctx.obj.project.status()
         else:
             # default command if available
-            state = ctx.find_object(State)
             state.project.exec()
+    elif stop or update or restart or status:
+        raise UsageError('Invalid arguments combination')
 
 
 def main(args=None):
@@ -85,10 +92,20 @@ def main(args=None):
 
     log = getLogger()
     project = None
+    exit_code = 0
+
     try:
-        config = Config()
+        config_error = None
+        try:
+            config = Config()
+        except ConfigError as e:
+            config = Munch()
+            config_error = e
+
         project = Project(config)
         state = State(project)
+        state.error = config_error
+
         cli.add_command(shell)
         cli.add_command(exec)
 
@@ -101,7 +118,6 @@ def main(args=None):
             executors.append((name, executor.help or ''))
         cli.custom_epilog = {'Executors': executors}
 
-        exit_code = 0
         ctx = cli.make_context('brock', args)
         ctx.obj = state
 
