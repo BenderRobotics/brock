@@ -60,7 +60,7 @@ class DockerExecutor(Executor):
             self._image_name = image_parts[0]
             self._image_tag = 'latest'
         else:
-            raise ExecutorError('Invalid toolchain image')
+            raise ExecutorError('Invalid executor image')
 
         self._volume_sync = None
         if 'sync' in our_conf:
@@ -75,10 +75,6 @@ class DockerExecutor(Executor):
         self._prepare = our_conf.get('prepare', [])
         self._devices = our_conf.get('devices', [])
         self._sync_needed = self._volume_sync == 'rsync'
-        try:
-            self._docker = docker.from_env()
-        except docker.errors.DockerException:
-            raise ExecutorError('Docker engine is not running')
 
     def on_exit(self):
         if self._volume_sync == 'rsync':
@@ -127,6 +123,13 @@ class DockerExecutor(Executor):
 
         if self._is_running():
             self.restart()
+
+    @property
+    def _docker(self):
+        try:
+            return docker.from_env()
+        except docker.errors.DockerException:
+            raise ExecutorError('Docker engine is not running')
 
     def _is_running(self):
         if not self._is_container_running(self._name):
