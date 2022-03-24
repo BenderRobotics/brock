@@ -118,18 +118,19 @@ def main(args=None):
             executors.append((name, executor.help or ''))
         cli.custom_epilog = {'Executors': executors}
 
-        ctx = cli.make_context('brock', args)
-        ctx.obj = state
+        try:
+            result = cli(obj=state, standalone_mode=False)
+        except RuntimeError:
+            # * Exit and Abort from click
+            result = None
 
-        with ctx:
-            result = cli.invoke(ctx)
-            if result is not None:
-                exit_code = result
+        if config_error:
+            raise config_error
+        if result is not None:
+            exit_code = result
     except ClickException as ex:
         log.error(ex.message)
         exit_code = ex.exit_code
-    except RuntimeError as ex:
-        pass  # * Exit and Abort from click
     except BaseBrockException as ex:
         if len(ex.message) > 0:
             log.error(ex.message)
