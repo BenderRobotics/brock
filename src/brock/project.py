@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from brock.exception import ConfigError, ExecutorError, UsageError
 from brock.config.config import Config
 from brock.executors import Executor
-from brock.executors.shell import ShellExecutor
+from brock.executors.host import HostExecutor
 from brock.executors.docker import DockerExecutor
 from brock.executors.ssh import SshExecutor
 
@@ -68,7 +68,7 @@ class Project:
                 raise ConfigError(f'Command must be a single word: {name}')
             self._commands[name] = Command(cmd)
 
-        self._executors['host'] = ShellExecutor(Config, 'shell', 'Execute command on host computer')
+        self._executors['host'] = HostExecutor(Config, 'host', 'Execute command on host computer')
         for name, executor in executors.items():
             if name == 'default':
                 continue

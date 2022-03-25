@@ -6,13 +6,13 @@ from brock.exception import ExecutorError
 from brock.executors import Executor
 
 
-class ShellExecutor(Executor):
-    '''Executor for local console access'''
+class HostExecutor(Executor):
+    '''Executor for local host access'''
 
     def exec(self, command: str, chdir: Optional[str] = None) -> int:
         os.environ['PYTHONUNBUFFERED'] = '1'
 
-        self._log.extra_info(f'Executing command in host shell: {command}')
+        self._log.extra_info(f'Executing command on host: {command}')
         if not chdir:
             chdir = '.'
 
