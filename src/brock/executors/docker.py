@@ -1,7 +1,6 @@
 import os
 import docker
 import hashlib
-import sys
 import time
 
 from typing import Optional
@@ -39,6 +38,12 @@ class DockerExecutor(Executor):
 
         our_conf = config.executors[name]
         self._platform = our_conf.get('platform', 'linux')
+
+        if self._default_shell is None:
+            if self._platform == 'windows':
+                self._default_shell = 'cmd'
+            else:
+                self._default_shell = 'sh'
 
         if self._platform == 'windows':
             self._mount_dir = f'C:{self._HOST_PATH}'

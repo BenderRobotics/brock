@@ -1,4 +1,4 @@
-version: 0.0.2                # minimum Brock version required to use this config
+version: 0.0.3                # minimum Brock version required to use this config
 project: someprojectname      # name of the project
 help: "brock --help message"  # optional
 commands:                     # optional
@@ -20,6 +20,14 @@ commands:                     # optional
     depends_on:               # dependencies only command, no steps need to be defined
       - clean
       - build
+  service:
+    steps:
+      - executor: atollic     # optional
+        shell: powershell     # optional
+        script: |
+          $ServiceName = 'EventLog'
+          $ServiceInfo = Get-Service -Name $ServiceName
+          Write-Output $ServiceInfo
 
 executors:
   default: python             # optional - default executor, when not defined @host is used
@@ -34,6 +42,7 @@ executors:
     devices:                  # optional - pass devices to windows containers (isolation=process only)
       # https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/hardware-devices-in-containers
       - class/{interface class GUID}
+    default_shell: powershell # optional - default shell (if not specified, sh or cmd is used based on executor platform)
   python:
     type: docker
     image: python:3.9         # use image from registry

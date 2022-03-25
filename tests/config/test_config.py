@@ -3,11 +3,11 @@ from brock.config.config import Config
 
 def test_full_config():
     config = Config('example_brock.yml')
-    assert str(config.version) == '0.0.2'
+    assert str(config.version) == '0.0.3'
     assert config.project == 'someprojectname'
     assert config.help == 'brock --help message'
 
-    assert len(config.commands.keys()) == 4
+    assert len(config.commands.keys()) == 5
     assert config.commands.default == 'build'
 
     assert config.commands.clean.default_executor == 'atollic'
@@ -19,6 +19,12 @@ def test_full_config():
     assert config.commands.build.steps == ['@atollic make', 'make tests', '@host echo \'Building finished\'']
 
     assert config.commands.rebuild.depends_on == ['clean', 'build']
+
+    assert len(config.commands.service.steps) == 1
+    assert config.commands.service.steps[0].executor == 'atollic'
+    assert config.commands.service.steps[0].shell == 'powershell'
+    assert config.commands.service.steps[0].script == \
+        '$ServiceName = \'EventLog\'\n$ServiceInfo = Get-Service -Name $ServiceName\nWrite-Output $ServiceInfo\n'
 
     assert len(config.executors.keys()) == 4
 
@@ -32,6 +38,7 @@ def test_full_config():
     assert config.executors.atollic.env.SOME_VAR == 'foo'
     assert config.executors.atollic.env.OTHER_VAR == 123
     assert config.executors.atollic.devices == ['class/{interface class GUID}']
+    assert config.executors.atollic.default_shell == 'powershell'
 
     assert config.executors.python.type == 'docker'
     assert config.executors.python.image == 'python:3.9'

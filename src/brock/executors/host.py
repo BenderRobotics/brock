@@ -2,12 +2,28 @@ from typing import Optional
 
 import subprocess
 import os
-from brock.exception import ExecutorError
+import platform
 from brock.executors import Executor
+from brock.config.config import Config
 
 
 class HostExecutor(Executor):
     '''Executor for local host access'''
+
+    def __init__(self, config: Config, name: str, help: Optional[str] = None):
+        '''Initializes Host executor
+
+        :param config: A whole brock configuration
+        :param name: Name of the executor
+        :param help: Optional help message
+        '''
+        super().__init__(config, name, help)
+
+        if self._default_shell is None:
+            if platform.system() == 'Windows':
+                self._default_shell = 'cmd'
+            else:
+                self._default_shell = 'sh'
 
     def exec(self, command: str, chdir: Optional[str] = None) -> int:
         os.environ['PYTHONUNBUFFERED'] = '1'

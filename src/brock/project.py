@@ -2,7 +2,7 @@ import re
 from munch import Munch
 from typing import Dict, List, Optional
 
-from brock.exception import ConfigError, ExecutorError, UsageError
+from brock.exception import ConfigError, UsageError
 from brock.config.config import Config
 from brock.executors import Executor
 from brock.executors.host import HostExecutor
@@ -18,12 +18,19 @@ class Command:
     a correct content.
     '''
 
-    def __init__(self, config: Munch):
-        self._steps = config.get('steps', [])
+    def __init__(self, config: Munch, default_executor: Optional[str]):
         self._chdir = config.get('chdir', None)
         self._depends_on = config.get('depends_on', [])
-        self._default_executor = config.get('default_executor', None)
+        self._default_executor = config.get('default_executor', default_executor)
         self.help = config.get('help', '')
+
+        steps = []
+        for step in config.get('steps', []):
+            if isinstance(step, Munch):
+                steps.append(step.toDict())
+            else:
+                steps.append(step)
+        self._steps = steps
 
     def exec(self, project) -> int:
         for dependency in self._depends_on:
@@ -32,20 +39,51 @@ class Command:
                 return exit_code
 
         for step in self._steps:
-            res = re.search(r'(?:^@(\w+) )?(.*)', step)
-            if res is None:
-                raise ConfigError(f'Unknown step format: {step}')
+            exit_code = self._exec_step(project, step)
 
-            executor_name = res.group(1)
-            command = res.group(2)
-            if not executor_name:
-                executor_name = self._default_executor
-
-            exit_code = project.exec_raw(command, executor_name, self._chdir)
             if exit_code != 0:
                 return exit_code
 
         return exit_code
+
+    def _exec_step(self, project, step) -> int:
+        if type(step) is str:
+            res = re.search(r'(?:^@(\w+) )?(.*)', step)
+            if res is None:
+                raise ConfigError(f'Unknown step format: {step}')
+
+            executor = res.group(1)
+            command = res.group(2)
+            if not executor:
+                executor = self._default_executor
+        elif type(step) is dict:
+            executor = step.get('executor', self._default_executor)
+            shell = step.get('shell', project.get_default_shell(executor))
+            if shell is None:
+                raise ConfigError('Shell must be specified')
+            command = self._get_shell_command(step.get('script'), shell)
+        else:
+            raise ConfigError(f'Unexpected step type: {type(step)}')
+
+        return project.exec_raw(command, executor, self._chdir)
+
+    def _get_shell_command(self, script, shell) -> List[str]:
+        if shell in ('sh', 'bash', 'zsh', 'powershell'):
+            command = [shell, '-c']
+            separator = '; '
+        elif shell == 'powershell':
+            command = [shell, '-Command']
+            separator = '; '
+        elif shell == 'cmd':
+            command = [shell, '/C']
+            separator = ' & '
+        else:
+            raise ConfigError(f'Unsupported shell: {shell}')
+
+        lines = [ln.strip() for ln in script.splitlines() if ln.strip()]
+        command.append(separator.join(lines))
+
+        return command
 
 
 class Project:
@@ -66,9 +104,9 @@ class Project:
                 continue
             if len(name.split()) != 1:
                 raise ConfigError(f'Command must be a single word: {name}')
-            self._commands[name] = Command(cmd)
+            self._commands[name] = Command(cmd, self._default_executor)
 
-        self._executors['host'] = HostExecutor(Config, 'host', 'Execute command on host computer')
+        self._executors['host'] = HostExecutor(config, 'host', 'Execute command on host computer')
         for name, executor in executors.items():
             if name == 'default':
                 continue
@@ -106,6 +144,12 @@ class Project:
         if len(self._executors) == 1:
             return list(self._executors.keys())[0]
         return None
+
+    def get_default_shell(self, executor) -> Optional[str]:
+        if executor in self._executors:
+            return self._executors[executor].get_default_shell()
+        else:
+            return None
 
     def status(self):
         for name, executor in self._executors.items():

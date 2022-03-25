@@ -21,7 +21,11 @@ class Config(Munch):
                 Optional('chdir'): str,
                 Optional('help'): str,
                 Optional('depends_on'): [str],
-                Optional('steps'): [str],
+                Optional('steps'): [Or(str, {
+                    Optional('executor'): str,
+                    Optional('shell'): str,
+                    'script': str
+                })],
             }
         },
         'executors': {
@@ -43,6 +47,7 @@ class Config(Munch):
                         Optional('exclude'): [str],
                     },
                     Optional('prepare'): [str],
+                    Optional('default_shell'): str,
                 }, {
                     'type': 'ssh',
                     Optional('help'): str,

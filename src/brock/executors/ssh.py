@@ -23,6 +23,9 @@ class SshExecutor(Executor):
         self._username = our_conf.get('username', None)
         self._password = our_conf.get('password', None)
 
+        if self._default_shell is None:
+            self._default_shell = 'sh'
+
     def exec(self, command: str, chdir: Optional[str] = None) -> int:
         self._log.extra_info(f'Executing command on SSH host {self._host}: {command}')
         self._log.debug(f'Command: {command}')
