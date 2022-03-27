@@ -41,13 +41,17 @@ def shell(state: State, executor=None):
 @pass_state
 def exec(state, input=None):
     '''Run command in executor'''
-    if input[0][0] != '@':
+    if len(input) == 0:
+        raise UsageError('No command specified')
+    elif input[0][0] != '@':
         executor = state.project.get_default_executor()
         if not executor:
             raise UsageError('Multiple executors available, you have to specify which one to use')
         executor = '@' + executor
         command = input
     else:
+        if len(input) < 2:
+            raise UsageError('No command specified')
         executor = input[0]
         command = input[1:]
 
