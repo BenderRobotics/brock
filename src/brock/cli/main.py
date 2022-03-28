@@ -5,7 +5,7 @@ import logging.config
 from munch import Munch
 from typing import Dict, Tuple
 from click.exceptions import ClickException
-from .shared import shared_arguments, State, pass_state
+from .state import State, set_verbosity, set_no_color
 
 from brock.exception import BaseBrockException, ConfigError, UsageError
 from brock.project import Project
@@ -62,8 +62,16 @@ class CustomCommandGroup(click.Group):
     metavar='[EXECUTOR]'
 )
 @click.option('-s', '--status', is_flag=True, help='Show state of the project')
+@click.option('-v', '--verbose', count=True, help='Set logging verbosity', expose_value=False, callback=set_verbosity)
+@click.option(
+    '--no-color',
+    is_flag=True,
+    help='Disable default color output',
+    multiple=False,
+    expose_value=False,
+    callback=set_no_color
+)
 @click.pass_context
-@shared_arguments
 def cli(ctx, stop, update, restart, status):
     state = ctx.find_object(State)
     # allow running --help and --version even if config parsing failed

@@ -2,14 +2,13 @@ import click
 from typing import Optional
 
 from brock.exception import UsageError
-from .shared import shared_arguments, State, pass_state
+from .state import State, pass_state
 
 
 def create_command(cmd: str, help: Optional[str] = None):
     '''Returns click command function for brock commands'''
 
     @click.command(name=cmd, help=help)
-    @shared_arguments
     @pass_state
     def f(state):
         return state.project.exec(cmd)
@@ -19,7 +18,6 @@ def create_command(cmd: str, help: Optional[str] = None):
 
 @click.command()
 @click.argument('executor', required=False)
-@shared_arguments
 @pass_state
 def shell(state: State, executor=None):
     '''Open shell in executor'''
@@ -37,9 +35,8 @@ def shell(state: State, executor=None):
 
 @click.command()
 @click.argument('input', nargs=-1, type=click.Path())
-@shared_arguments
 @pass_state
-def exec(state, input=None):
+def exec(state: State, input=None):
     '''Run command in executor'''
     if len(input) == 0:
         raise UsageError('No command specified')
