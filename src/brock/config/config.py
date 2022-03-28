@@ -37,7 +37,6 @@ class Config(Munch):
                     Optional('help'): str,
                     Or('image', 'dockerfile', only_one=True): str,
                     Optional('platform'): str,
-                    Optional('verbose'): Use(bool),
                     Optional('env'): {
                         str: Or(str, int, float)
                     },
