@@ -1,8 +1,8 @@
-from typing import Optional
-
 import subprocess
 import os
 import platform
+
+from typing import Optional, Union, Sequence
 from brock.executors import Executor
 from brock.config.config import Config
 
@@ -25,7 +25,7 @@ class HostExecutor(Executor):
             else:
                 self._default_shell = 'sh'
 
-    def exec(self, command: str, chdir: Optional[str] = None) -> int:
+    def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
         os.environ['PYTHONUNBUFFERED'] = '1'
 
         self._log.extra_info(f'Executing command on host: {command}')

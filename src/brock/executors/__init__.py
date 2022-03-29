@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union, Sequence
 from brock.log import getLogger
 from brock.config.config import Config
 from brock.exception import ExecutorError
@@ -43,7 +43,7 @@ class Executor:
     def update(self):
         pass
 
-    def exec(self, command: str, chdir: Optional[str] = None) -> int:
+    def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
         raise NotImplementedError
 
     def shell(self) -> int:

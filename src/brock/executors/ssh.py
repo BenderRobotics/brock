@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union, Sequence
 from fabric import Connection
 from brock.executors import Executor
 from brock.config.config import Config
@@ -26,9 +26,11 @@ class SshExecutor(Executor):
         if self._default_shell is None:
             self._default_shell = 'sh'
 
-    def exec(self, command: str, chdir: Optional[str] = None) -> int:
+    def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
         self._log.extra_info(f'Executing command on SSH host {self._host}: {command}')
-        self._log.debug(f'Command: {command}')
+
+        if type(command) is not str:
+            command = ' '.join([f'"{c}"' if ' ' in c else c for c in command])
 
         if self._username is None:
             username = input('Enter username: ')
@@ -41,6 +43,7 @@ class SshExecutor(Executor):
             password = self._password
 
         if chdir is not None:
+            self._log.debug(f'Work dir: {chdir}')
             cmd = f'cd {chdir}; {command}'
         else:
             cmd = command
@@ -54,7 +57,7 @@ class SshExecutor(Executor):
                 },
             )
 
-            result = conn.run(cmd)
+            result = conn.run(cmd, hide=True)
 
             self._log.stdout(result.stdout)
 

@@ -4,7 +4,7 @@ import docker
 import hashlib
 import time
 
-from typing import Optional
+from typing import Optional, Union, Sequence
 from brock.executors import Executor
 from brock.config.config import Config
 from brock.exception import ConfigError, ExecutorError
@@ -115,7 +115,7 @@ class DockerExecutor(Executor):
         if self._is_running():
             self.restart()
 
-    def exec(self, command: str, chdir: Optional[str] = None) -> int:
+    def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
         if not self._is_running():
             self._log.info('Executor not running -> starting')
             self._start()
@@ -308,7 +308,6 @@ class DockerExecutor(Executor):
 
     def _exec_command(self, container, command, work_dir):
         self._log.extra_info(f'Executing command in container {container}: {command}')
-        self._log.debug(f'Command: {command}')
         self._log.debug(f'Work dir: {work_dir}')
         container = self._get_container(container)
 
