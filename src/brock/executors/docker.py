@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 import docker
 import hashlib
@@ -318,11 +319,9 @@ class DockerExecutor(Executor):
             try:
                 for chunk in output:
                     if chunk[0]:
-                        for line in chunk[0].split(b'\n'):
-                            self._log.stdout(line.decode())
+                        print(chunk[0].decode(), end='')
                     if chunk[1]:
-                        for line in chunk[1].split(b'\n'):
-                            self._log.stderr(line.decode())
+                        print(chunk[1].decode(), end='', file=sys.stderr)
             except KeyboardInterrupt:
                 self._log.warning('Execution interrupted')
 

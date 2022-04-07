@@ -1,5 +1,6 @@
 import subprocess
 import os
+import sys
 import platform
 
 from typing import Optional, Union, Sequence
@@ -44,9 +45,10 @@ class HostExecutor(Executor):
         while proc.poll() is None:
             line = proc.stdout.readline()  # type:ignore
             if line:
-                self._log.stdout(line.decode().replace('\n', ''))
+                print(line.decode(), end='')
 
             line = proc.stderr.readline()  # type:ignore
             if line:
-                self._log.stderr(line.decode().replace('\n', ''))
+                print(line.decode(), end='', file=sys.stderr)
+
         return proc.returncode

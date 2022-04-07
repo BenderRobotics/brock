@@ -58,8 +58,7 @@ class SshExecutor(Executor):
             )
 
             result = conn.run(cmd, hide=True)
-
-            self._log.stdout(result.stdout)
+            print(result.stdout, end='')
 
             return result.exited
         except Exception as ex:
