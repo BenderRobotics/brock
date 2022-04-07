@@ -19,6 +19,8 @@ class HostExecutor(Executor):
         '''
         super().__init__(config, name, help)
 
+        self._base_dir = config.base_dir
+
         if self._default_shell is None:
             if platform.system() == 'Windows':
                 self._default_shell = 'cmd'
@@ -34,7 +36,7 @@ class HostExecutor(Executor):
 
         proc = subprocess.Popen(
             command,
-            cwd=chdir,
+            cwd=os.path.join(self._base_dir, chdir),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
