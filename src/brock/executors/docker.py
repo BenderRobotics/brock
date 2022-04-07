@@ -362,7 +362,7 @@ class DockerExecutor(Executor):
             # only sync out when the data were synced in before
             return
         self._log.extra_info(f'Rsyncing data out of executor')
-        self._rsync(f'{self._RSYNC_PATH}/{self._work_dir_rel}', f'{self._HOST_PATH}/{self._work_dir_rel}')
+        self._rsync(self._RSYNC_PATH, self._HOST_PATH)
         self._sync_needed = True
 
     def _rsync(self, src, dest, options=['-a', '--delete']):
