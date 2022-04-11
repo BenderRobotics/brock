@@ -29,10 +29,10 @@ class Config(Munch):
                 })],
             }
         },
-        'executors': {
+        Optional('executors'): {
             Optional('default'):
                 str,
-            str:
+            Optional(str):
                 Or({
                     'type': 'docker',
                     Optional('help'): str,

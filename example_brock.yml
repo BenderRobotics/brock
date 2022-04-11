@@ -29,7 +29,7 @@ commands:                     # optional
           $ServiceInfo = Get-Service -Name $ServiceName
           Write-Output $ServiceInfo
 
-executors:
+executors:                    # optional - if not present, only host executor can be used
   default: python             # optional - default executor, when not defined @host is used
   atollic:
     type: docker              # type of the executor, each type has a different arguments
