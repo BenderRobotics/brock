@@ -105,25 +105,25 @@ def main(args=None):
         config_error = None
         try:
             config = Config()
+            project = Project(config)
         except ConfigError as e:
-            config = Munch()
             config_error = e
 
-        project = Project(config)
         state = State(project)
         state.error = config_error
 
         cli.add_command(shell)
         cli.add_command(exec)
 
-        for name, cmd in project.get_commands().items():
-            cli.add_command(create_command(name, cmd.help))
-        cli.help = config.get('help', '')
+        if project:
+            for name, cmd in project.get_commands().items():
+                cli.add_command(create_command(name, cmd.help))
+            cli.help = config.get('help', '')
 
-        executors = []
-        for name, executor in project.get_executors().items():
-            executors.append((name, executor.help or ''))
-        cli.custom_epilog = {'Executors': executors}
+            executors = []
+            for name, executor in project.get_executors().items():
+                executors.append((name, executor.help or ''))
+            cli.custom_epilog = {'Executors': executors}
 
         try:
             result = cli(obj=state, standalone_mode=False)

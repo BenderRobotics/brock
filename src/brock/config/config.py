@@ -81,8 +81,11 @@ class Config(Munch):
             self._log.extra_info('Merging config files')
             conf = hiyapyco.load(config_files, method=hiyapyco.METHOD_MERGE)
             self._log.debug(f'Merged config: {conf}')
-        except hiyapyco.HiYaPyCoImplementationException as ex:
+        except (hiyapyco.HiYaPyCoImplementationException, hiyapyco.HiYaPyCoInvocationException) as ex:
             raise ConfigError(f'Failed to process config files: {ex}')
+
+        if conf is None:
+            raise ConfigError('Invalid config file: Config file is empty')
 
         # validate config schema
         try:
