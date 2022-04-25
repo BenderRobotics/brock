@@ -6,6 +6,7 @@ import platform
 from typing import Optional, Union, Sequence
 from brock.executors import Executor
 from brock.config.config import Config
+from brock.exception import ExecutorError
 
 
 class HostExecutor(Executor):
@@ -33,12 +34,15 @@ class HostExecutor(Executor):
         if not chdir:
             chdir = '.'
 
-        proc = subprocess.Popen(
-            command,
-            cwd=os.path.join(self._base_dir, chdir),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        try:
+            proc = subprocess.Popen(
+                command,
+                cwd=os.path.join(self._base_dir, chdir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except FileNotFoundError:
+            raise ExecutorError(f"Unable to run '{command}', binary not found")
 
         while proc.poll() is None:
             line = proc.stdout.readline()  # type:ignore
