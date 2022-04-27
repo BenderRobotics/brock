@@ -115,9 +115,6 @@ EXTRA_INFO = logging.INFO - 5
 DEBUG = logging.DEBUG
 NOTSET = logging.NOTSET
 
-LOGGER = 'color'
-VERBOSITY = INFO
-
 logging._levelToName[EXTRA_INFO] = 'EXTRA_INFO'
 logging._nameToLevel['EXTRA_INFO'] = EXTRA_INFO
 
@@ -170,8 +167,23 @@ class Logger(logging.Logger):
 logging.setLoggerClass(Logger)
 
 
-def getLogger():
-    logger = Logger.manager.getLogger(LOGGER)
-    logger.setLevel(VERBOSITY)
+def init_logging():
+    logging.config.dictConfig(DEFAULT_LOGGING)
+    logger = get_logger()
+    logger.setLevel(INFO)
 
-    return logger
+
+def disable_color():
+    logger = get_logger()
+    logger.removeHandler(logger.handlers[0])
+    normal = Logger.manager.getLogger('normal')
+    logger.addHandler(normal.handlers[0])
+
+
+def set_verbosity(verbosity):
+    logger = get_logger()
+    logger.setLevel(verbosity)
+
+
+def get_logger():
+    return Logger.manager.getLogger('color')

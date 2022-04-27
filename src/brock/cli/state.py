@@ -14,28 +14,26 @@ class State:
 
 def set_verbosity(ctx, param, value):
     if value == 0:
-        log.VERBOSITY = log.INFO
+        log.set_verbosity(log.INFO)
     elif value == 1:
-        log.VERBOSITY = log.EXTRA_INFO
+        log.set_verbosity(log.EXTRA_INFO)
     else:
-        log.VERBOSITY = log.DEBUG
+        log.set_verbosity(log.DEBUG)
 
     state = ctx.find_object(State)
     if state:
         state.verbosity = value
-        state.project.update_logger()
 
     return value
 
 
 def set_no_color(ctx, param, value):
     if value:
-        log.LOGGER = 'normal'
+        log.disable_color()
 
     state = ctx.find_object(State)
     if state:
         state.no_color = value
-        state.project.update_logger()
 
     return value
 

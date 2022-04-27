@@ -11,10 +11,8 @@ from brock.exception import BaseBrockException, ConfigError, UsageError
 from brock.project import Project
 from brock.config.config import Config
 from brock import __version__
-from brock.log import DEFAULT_LOGGING, getLogger
+from brock.log import get_logger, init_logging
 from .commands import create_command, shell, exec
-
-logging.config.dictConfig(DEFAULT_LOGGING)
 
 
 class CustomCommandGroup(click.Group):
@@ -98,7 +96,8 @@ def main(args=None):
     if args is None:
         args = sys.argv[1:]
 
-    log = getLogger()
+    init_logging()
+    log = get_logger()
     project = None
     exit_code = 0
 

@@ -1,5 +1,6 @@
+import hashlib
 from typing import Optional, Union, Sequence
-from brock.log import getLogger
+from brock.log import get_logger
 from brock.config.config import Config
 from brock.exception import ExecutorError
 
@@ -12,24 +13,28 @@ class Executor:
     '''
 
     def __init__(self, config: Config, name: str, help: Optional[str] = None):
-        self._log = getLogger()
+        self._log = get_logger()
         self.help = help
 
-        our_conf = config.executors.get(name, None)
-        if our_conf is not None:
-            self._default_shell = our_conf.get('default_shell', None)
+        self._base_dir = config.base_dir
+        self._hashed_base_dir = hashlib.md5(self._base_dir.encode('ascii')).hexdigest()
+
+        self._conf = config.executors.get(name, None)
+        if self._conf is not None:
+            self._default_shell = self._conf.get('default_shell', None)
         else:
             self._default_shell = None
 
     def get_default_shell(self) -> Optional[str]:
         return self._default_shell
 
-    def on_exit(self):
-        '''Called upon exiting the brock'''
+    def sync_in(self):
+        '''Synchronizes local data to executor if needed'''
         pass
 
-    def update_logger(self):
-        self._log = getLogger()
+    def sync_out(self):
+        '''Synchronizes local data out of executor if needed'''
+        pass
 
     def status(self) -> str:
         return 'Idle'

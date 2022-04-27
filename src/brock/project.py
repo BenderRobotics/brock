@@ -92,6 +92,7 @@ class Project:
     _executors: Dict[str, Executor] = {}
     _commands: Dict[str, Command] = {}
     _default_command: Optional[str] = None
+    _prev_executor = None
 
     def __init__(self, config: Config):
         executors = config.get('executors', {})
@@ -125,12 +126,8 @@ class Project:
         return list(self._executors.values())
 
     def on_exit(self):
-        for executor in self._executors.values():
-            executor.on_exit()
-
-    def update_logger(self):
-        for executor in self._executors.values():
-            executor.update_logger()
+        if self._prev_executor:
+            self._executors[self._prev_executor].sync_out()
 
     def get_commands(self) -> Dict[str, Command]:
         return self._commands
@@ -187,9 +184,18 @@ class Project:
                 executor_name = 'host'
         if executor_name not in self._executors:
             raise ConfigError(f'Unknown executor {executor_name}')
+
+        if self._prev_executor != executor_name:
+            if self._prev_executor:
+                self._executors[self._prev_executor].sync_out()
+            self._executors[executor_name].sync_in()
+            self._prev_executor = executor_name
         return self._executors[executor_name].exec(command, chdir)
 
     def shell(self, executor_name: str) -> int:
         if executor_name not in self._executors:
             raise ConfigError(f'Unknown executor {executor_name}')
+
+        self._executors[executor_name].sync_in()
+        self._prev_executor = executor_name
         return self._executors[executor_name].shell()

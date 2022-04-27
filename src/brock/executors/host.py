@@ -20,8 +20,6 @@ class HostExecutor(Executor):
         '''
         super().__init__(config, name, help)
 
-        self._base_dir = config.base_dir
-
         if self._default_shell is None:
             if platform.system() == 'Windows':
                 self._default_shell = 'cmd'

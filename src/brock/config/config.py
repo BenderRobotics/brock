@@ -5,7 +5,7 @@ from munch import Munch
 
 from brock import __version__
 from brock.exception import ConfigError
-from brock.log import getLogger
+from brock.log import get_logger
 
 
 class Config(Munch):
@@ -59,7 +59,7 @@ class Config(Munch):
 
     def __init__(self, config_file_name='.brock.yml'):
         self._config_file_name = config_file_name
-        self._log = getLogger()
+        self._log = get_logger()
 
         self.update(self.load())
         current = __version__.split('.')
