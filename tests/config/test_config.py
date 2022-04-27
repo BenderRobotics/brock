@@ -3,7 +3,7 @@ from brock.config.config import Config
 
 def test_full_config():
     config = Config(['example_brock.yml'])
-    assert str(config.version) == '0.0.5'
+    assert str(config.version) == '0.0.6'
     assert config.project == 'someprojectname'
     assert config.help == 'brock --help message'
 
