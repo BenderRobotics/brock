@@ -12,14 +12,15 @@ from brock.exception import ExecutorError
 class HostExecutor(Executor):
     '''Executor for local host access'''
 
-    def __init__(self, config: Config, name: str, help: Optional[str] = None):
+    def __init__(self, config: Config, name: str):
         '''Initializes Host executor
 
         :param config: A whole brock configuration
         :param name: Name of the executor
-        :param help: Optional help message
         '''
-        super().__init__(config, name, help)
+        super().__init__(config, name)
+
+        self.help = 'Execute command on host computer'
 
         if self._default_shell is None:
             if platform.system() == 'Windows':

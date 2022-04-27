@@ -8,14 +8,13 @@ from brock.exception import ExecutorError
 class SshExecutor(Executor):
     '''Executor for launching commands on the remote system over ssh'''
 
-    def __init__(self, config: Config, name: str, help: Optional[str] = None):
+    def __init__(self, config: Config, name: str):
         '''Initializes SSH executor
 
         :param config: A whole brock configuration
         :param name: Name of the executor
-        :param help: Optional help message
         '''
-        super().__init__(config, name, help)
+        super().__init__(config, name)
 
         self._host = self._conf.host
         self._username = self._conf.get('username', None)

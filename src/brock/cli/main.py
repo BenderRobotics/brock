@@ -116,13 +116,15 @@ def main(args=None):
         cli.add_command(exec)
 
         if project:
-            for name, cmd in project.get_commands().items():
-                cli.add_command(create_command(name, cmd.help))
+            for name, cmd in project.commands.items():
+                help = cmd.help + (' (default)' if name == project.default_command else '')
+                cli.add_command(create_command(name, help.strip()))
             cli.help = config.get('help', '')
 
             executors = []
-            for name, executor in project.get_executors().items():
-                executors.append((name, executor.help or ''))
+            for name, executor in project.executors.items():
+                help = executor.help + (' (default)' if name == project.default_executor else '')
+                executors.append((name, help.strip()))
             cli.custom_epilog = {'Executors': executors}
 
         try:

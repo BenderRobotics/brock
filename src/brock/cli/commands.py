@@ -22,7 +22,7 @@ def create_command(cmd: str, help: Optional[str] = None):
 def shell(state: State, executor=None):
     '''Open shell in executor'''
     if not executor:
-        executor = state.project.get_default_executor()
+        executor = state.project.default_executor
         if not executor:
             raise UsageError('Multiple executors available, you have to specify which one to use')
     elif executor[0] != '@':
@@ -41,7 +41,7 @@ def exec(state: State, input=None):
     if len(input) == 0:
         raise UsageError('No command specified')
     elif input[0][0] != '@':
-        executor = state.project.get_default_executor()
+        executor = state.project.default_executor
         if not executor:
             raise UsageError('Multiple executors available, you have to specify which one to use')
         executor = '@' + executor

@@ -12,20 +12,23 @@ class Executor:
     implementation defined here.
     '''
 
-    def __init__(self, config: Config, name: str, help: Optional[str] = None):
+    def __init__(self, config: Config, name: str):
         self._log = get_logger()
-        self.help = help
 
         self._base_dir = config.base_dir
         self._hashed_base_dir = hashlib.md5(self._base_dir.encode('ascii')).hexdigest()
 
         self._conf = config.executors.get(name, None)
+        self._default_shell = None
+
+        self.help = ''
+
         if self._conf is not None:
             self._default_shell = self._conf.get('default_shell', None)
-        else:
-            self._default_shell = None
+            self.help = self._conf.get('help', '')
 
-    def get_default_shell(self) -> Optional[str]:
+    @property
+    def default_shell(self) -> Optional[str]:
         return self._default_shell
 
     def sync_in(self):

@@ -2,7 +2,7 @@ version: 0.0.5                # minimum Brock version required to use this confi
 project: someprojectname      # name of the project
 help: "brock --help message"  # optional
 commands:                     # optional
-  default: build              # optional - default command to run when no command specified
+  default: build              # optional - default command to run when no command specified, can be ommited if just one command is configured
   clean:
     default_executor: atollic # optional - default executor to use for this command
     chdir: foo/bar            # optional - switch to this directory relative to base config prior execution
@@ -30,7 +30,7 @@ commands:                     # optional
           Write-Output $ServiceInfo
 
 executors:                    # optional - if not present, only host executor can be used
-  default: python             # optional - default executor, when not defined @host is used
+  default: python             # optional - default executor, if no executors are defined host executor is used, can be ommited if just one executor is configured
   atollic:
     type: docker              # type of the executor, each type has a different arguments
     help: "Executor --help message" # optional

@@ -209,14 +209,13 @@ class DockerExecutor(Executor):
     _HOST_PATH = '/host'
     _RSYNC_PATH = '/rsync_volume'
 
-    def __init__(self, config: Config, name: str, help: Optional[str] = None):
+    def __init__(self, config: Config, name: str):
         '''Initializes Docker executor
 
         :param config: A whole brock configuration
         :param name: Name of the executor
-        :param help: Optional help message
         '''
-        super().__init__(config, name, help)
+        super().__init__(config, name)
 
         self._platform = self._conf.get('platform', 'linux')
         self._prepare = self._conf.get('prepare', [])
@@ -345,7 +344,7 @@ class DockerExecutor(Executor):
         if not self._synced_in:
             self.sync_in()
 
-        shell = self.get_default_shell()
+        shell = self.default_shell
         if shell is None:
             raise ExecutorError('Shell is not defined')
 
