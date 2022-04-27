@@ -2,6 +2,7 @@ import os
 import hiyapyco
 from schema import Schema, And, Or, Use, Optional, SchemaError
 from munch import Munch
+from pathlib import Path
 
 from brock import __version__
 from brock.exception import ConfigError
@@ -57,8 +58,12 @@ class Config(Munch):
         }
     }
 
-    def __init__(self, config_file_name='.brock.yml'):
-        self._config_file_name = config_file_name
+    def __init__(self, config_file_names=None):
+        if config_file_names is None:
+            self._config_file_names = ['.brock.yml', 'brock.yml', '.brock.yaml', 'brock.yaml']
+        else:
+            self._config_file_names = config_file_names
+
         self._log = get_logger()
 
         self.update(self.load())
@@ -103,14 +108,26 @@ class Config(Munch):
 
         config_files = []
         path_parts = self._split_path(self.work_dir)
+
         for i in range(1, len(path_parts) + 1):
-            path = os.path.join(*path_parts[:i], self._config_file_name).replace('\\', '/')
-            if os.path.isfile(path):
-                self._log.debug(f'Found config file: {path}')
-                config_files.append(path)
+            found = 0
+            for config_file_name in self._config_file_names:
+                path = Path('').joinpath(*path_parts[:i], config_file_name)
+
+                if path.is_file():
+                    self._log.debug(f'Found config file: {path.as_posix()}')
+                    config_files.append(path.as_posix())
+                    found += 1
+
+            if found > 1:
+                raise ConfigError(
+                    f"Multiple brock config files found in '{Path('').joinpath(*path_parts[:i]).as_posix()}'"
+                )
 
         if not config_files:
-            raise ConfigError('No config files found')
+            raise ConfigError(
+                f"No config file ({', '.join(self._config_file_names)}) found in '{self.work_dir}' or parent directories"
+            )
 
         self.base_dir = os.path.dirname(config_files[0])
         self._log.debug(f'Base dir: {self.base_dir}')
