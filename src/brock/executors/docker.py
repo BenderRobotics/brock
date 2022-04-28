@@ -100,6 +100,39 @@ class Container:
                 except docker.errors.APIError as ex:
                     raise ExecutorError(f'Failed to create volume: {ex}')
 
+    def _build(self):
+        self._log.info(f'Building Docker image from {self._dockerfile}')
+        dockerdir = os.path.dirname(self._dockerfile)
+        try:
+            generator = self._docker.api.build(
+                path=dockerdir, platform=self._platform, tag=f'{self._image_name}:{self._image_tag}', decode=True
+            )
+            try:
+                for chunk in generator:
+                    if 'stream' in chunk:
+                        print(chunk['stream'], end='')
+            except KeyboardInterrupt:
+                self._log.warning('Execution interrupted')
+
+        except (docker.errors.BuildError, docker.errors.APIError) as e:
+            raise ExecutorError(f'Unable to build image: {str(e)}')
+
+    def _pull(self):
+        self._log.info(f'Pulling image {self._image_name}:{self._image_tag}')
+        try:
+            generator = self._docker.api.pull(
+                self._image_name, self._image_tag, platform=self._platform, stream=True, decode=True
+            )
+            try:
+                for chunk in generator:
+                    if 'progress' not in chunk and 'status' in chunk:
+                        print(f"{chunk.get('id', '')} -> {chunk['status']}")
+            except KeyboardInterrupt:
+                self._log.warning('Execution interrupted')
+
+        except docker.errors.APIError as ex:
+            raise ExecutorError(f'Failed to pull image: {ex}')
+
     def is_running(self) -> bool:
         try:
             self._docker.containers.get(self.name)
@@ -141,21 +174,9 @@ class Container:
 
     def update(self) -> None:
         if self._dockerfile:
-            self._log.info(f'Building Docker image from {self._dockerfile}')
-            dockerdir = os.path.dirname(self._dockerfile)
-            try:
-                self._docker.images.build(
-                    path=dockerdir, platform=self._platform, tag=f'{self._image_name}:{self._image_tag}'
-                )
-            except (docker.errors.BuildError, docker.errors.APIError) as e:
-                raise ExecutorError(f'Unable to build image: {str(e)}')
+            self._build()
         else:
-            self._log.info(f'Pulling image {self._image_name}:{self._image_tag}')
-            try:
-                res = self._docker.images.pull(self._image_name, self._image_tag, platform=self._platform)
-                self._log.debug(res)
-            except docker.errors.APIError as ex:
-                raise ExecutorError(f'Failed to pull image: {ex}')
+            self._pull()
 
         if self.is_running():
             self.stop()
