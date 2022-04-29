@@ -17,8 +17,8 @@ class SshExecutor(Executor):
         super().__init__(config, name)
 
         self._host = self._conf.host
-        self._username = self._conf.get('username', None)
-        self._password = self._conf.get('password', None)
+        self._username = self._conf.get('username')
+        self._password = self._conf.get('password')
 
         if self._default_shell is None:
             self._default_shell = 'sh'

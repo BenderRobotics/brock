@@ -22,7 +22,7 @@ class Command:
     def __init__(self, name: str, config: Munch, default_executor: Optional[str]):
         self._log = get_logger()
 
-        self._chdir = config.get('chdir', None)
+        self._chdir = config.get('chdir')
         self._depends_on = config.get('depends_on', [])
         self._default_executor = config.get('default_executor', default_executor)
 
@@ -103,7 +103,7 @@ class Project:
 
     def __init__(self, config: Config):
         self._log = get_logger()
-        self._default_executor = config.executors.get('default', None)
+        self._default_executor = config.executors.get('default')
 
         for name, cmd in config.commands.items():
             if name == 'default':

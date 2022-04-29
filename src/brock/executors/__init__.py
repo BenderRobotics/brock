@@ -18,13 +18,13 @@ class Executor:
         self._base_dir = config.base_dir
         self._hashed_base_dir = hashlib.md5(self._base_dir.encode('ascii')).hexdigest()
 
-        self._conf = config.executors.get(name, None)
+        self._conf = config.executors.get(name)
         self._default_shell = None
 
         self.help = ''
 
         if self._conf is not None:
-            self._default_shell = self._conf.get('default_shell', None)
+            self._default_shell = self._conf.get('default_shell')
             self.help = self._conf.get('help', '')
 
     @property

@@ -291,7 +291,7 @@ class DockerExecutor(Executor):
         self._container = Container(
             f'brock-{config.project}-{name}-{self._hashed_base_dir}',
             platform=self._platform,
-            image=self._conf.get('image', None),
+            image=self._conf.get('image'),
             dockerfile=dockerfile,
             env=self._conf.get('env', {}),
             devices=self._conf.get('devices', []),
