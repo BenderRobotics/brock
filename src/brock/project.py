@@ -102,12 +102,10 @@ class Project:
     _prev_executor = None
 
     def __init__(self, config: Config):
-        executors = config.get('executors', {})
         self._log = get_logger()
-        self._default_executor = executors.get('default', None)
+        self._default_executor = config.executors.get('default', None)
 
-        commands = config.get('commands', {})
-        for name, cmd in commands.items():
+        for name, cmd in config.commands.items():
             if name == 'default':
                 self._default_command = cmd
                 continue
@@ -116,11 +114,11 @@ class Project:
             self._commands[name] = Command(name, cmd, self._default_executor)
 
         if self._default_command is None:
-            if len(commands) == 1:
-                self._default_command = next(iter(commands))
+            if len(config.commands) == 1:
+                self._default_command = next(iter(config.commands))
 
         self._executors['host'] = HostExecutor(config, 'host')
-        for name, executor in executors.items():
+        for name, executor in config.executors.items():
             if name == 'default':
                 continue
             elif executor.type == 'docker':
@@ -131,10 +129,10 @@ class Project:
                 raise ConfigError(f"Unknown executor type '{executor.type}'")
 
         if self._default_executor is None:
-            if len(executors) == 0:
+            if len(config.executors) == 0:
                 self._default_executor = 'host'
-            elif len(executors) == 1:
-                self._default_executor = next(iter(executors))
+            elif len(config.executors) == 1:
+                self._default_executor = next(iter(config.executors))
             else:
                 self._default_executor = None
 

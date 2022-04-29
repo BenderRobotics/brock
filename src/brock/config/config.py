@@ -15,7 +15,7 @@ class Config(Munch):
         'project': str,
         Optional('help'): str,
         Optional('default_cmd'): str,
-        Optional('commands'): {
+        Optional('commands', default={}): {
             Optional('default'): str,
             str: {
                 Optional('default_executor'): str,
@@ -29,7 +29,7 @@ class Config(Munch):
                 })],
             }
         },
-        Optional('executors'): {
+        Optional('executors', default={}): {
             Optional('default'):
                 str,
             Optional(str):
@@ -95,7 +95,7 @@ class Config(Munch):
         # validate config schema
         try:
             conf_schema = Schema(self.SCHEMA)
-            conf_schema.validate(conf)
+            conf = conf_schema.validate(conf)
         except SchemaError as ex:
             raise ConfigError(f'Invalid config file: {ex}')
 
