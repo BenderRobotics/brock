@@ -1,7 +1,12 @@
+import pytest
+
+from brock import __version__
 from brock.config.config import Config
+from brock.exception import ConfigError
 
 
-def test_full_config():
+def test_example_config():
+    '''Test the config attached as an example.'''
     config = Config(['example_brock.yml'])
     assert str(config.version) == '0.0.6'
     assert config.project == 'someprojectname'
@@ -54,3 +59,33 @@ def test_full_config():
     assert config.executors.remote.host == 'somesite.example.com:1235'
     assert config.executors.remote.username == 'foobar'
     assert config.executors.remote.password == 'strongpassword'
+
+
+def test_empty_config():
+    '''Test empty config raises error (#5813).'''
+    with pytest.raises(ConfigError) as ex:
+        config = Config(['\n'])
+    assert ex.value.message == 'Invalid config file: Config file is empty'
+
+
+def test_invalid_version():
+    '''Test invalid config version raises error - config version must be lower or equal to brock version.'''
+    with pytest.raises(ConfigError) as ex:
+        config = Config(['version: 5.0.0\nproject: test\n'])
+    assert ex.value.message.startswith('Current config requires Brock of version at least')
+
+
+def test_multiple_configs_in_one_dir():
+    '''Test multiple config files in one directory raises error.'''
+    with pytest.raises(ConfigError) as ex:
+        config = Config(config_file_names=['example_brock.yml', '.brock.yml'])
+    assert ex.value.message.startswith('Multiple brock config files found in')
+
+
+def test_empty_executors():
+    '''Test executors config section is empty or missing.'''
+    config = Config(['version: 0.0.6\nproject: test\nexecutors: {}\n'])
+    assert len(config.executors) == 0
+
+    config = Config(['version: 0.0.6\nproject: test\n'])
+    assert len(config.executors) == 0

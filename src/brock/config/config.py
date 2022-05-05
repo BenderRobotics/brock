@@ -1,6 +1,7 @@
 import os
 import hiyapyco
-from schema import Schema, And, Or, Use, Optional, SchemaError
+from schema import Schema, Or, Use, Optional, SchemaError
+import typing as t
 from munch import Munch
 from pathlib import Path
 
@@ -58,50 +59,53 @@ class Config(Munch):
         }
     }
 
-    def __init__(self, config_file_names=None):
-        if config_file_names is None:
-            self._config_file_names = ['.brock.yml', 'brock.yml', '.brock.yaml', 'brock.yaml']
-        else:
-            self._config_file_names = config_file_names
-
+    def __init__(self, configs: t.Optional[t.List[str]] = None, config_file_names: t.Optional[t.List[str]] = None):
         self._log = get_logger()
 
-        self.update(self.load())
-        current = __version__.split('.')
-        config = str(self.version).split('.')
-        for pos, val in enumerate(current):
-            if config[pos] < val:
-                break
-            if config[pos] > val:
-                raise ConfigError(
-                    f'Current config requires Brock of version at least {self.version}, you are using {__version__}'
-                )
+        if configs is None:
+            configs = self._scan_files(config_file_names)
 
-    def load(self):
-        # scan for config files
-        config_files = self._scan_files()
+        merged_config = self._load(configs)
+        validated_config = self._validate(merged_config)
 
-        # merge config files
+        self.update(Munch.fromDict(validated_config))
+
+    def _load(self, configs: t.List[str]) -> Munch:
         try:
             self._log.extra_info('Merging config files')
-            conf = hiyapyco.load(config_files, method=hiyapyco.METHOD_MERGE)
-            self._log.debug(f'Merged config: {conf}')
+            config = hiyapyco.load(configs, method=hiyapyco.METHOD_MERGE)
+            self._log.debug(f'Merged config: {config}')
         except Exception as ex:
             raise ConfigError(f'Failed to process config files: {ex}')
 
-        if conf is None:
+        if config is None:
             raise ConfigError('Invalid config file: Config file is empty')
 
-        # validate config schema
+        return config
+
+    def _validate(self, config: t.Dict) -> t.Dict:
         try:
-            conf_schema = Schema(self.SCHEMA)
-            conf = conf_schema.validate(conf)
+            config_schema = Schema(self.SCHEMA)
+            config = config_schema.validate(config)
         except SchemaError as ex:
             raise ConfigError(f'Invalid config file: {ex}')
 
-        return Munch.fromDict(conf)
+        current_ver = __version__.split('.')
+        config_ver = str(config['version']).split('.')
+        for pos, val in enumerate(current_ver):
+            if config_ver[pos] < val:
+                break
+            if config_ver[pos] > val:
+                raise ConfigError(
+                    f'Current config requires Brock of version at least {config["version"]}, you are using {__version__}'
+                )
 
-    def _scan_files(self):
+        return config
+
+    def _scan_files(self, file_names: t.Optional[t.List[str]] = None) -> t.List[str]:
+        if file_names is None:
+            file_names = ['.brock.yml', 'brock.yml', '.brock.yaml', 'brock.yaml']
+
         self.work_dir = os.getcwd().replace('\\', '/')
 
         self._log.extra_info(f'Scanning config files, work dir: {self.work_dir}')
@@ -111,7 +115,7 @@ class Config(Munch):
 
         for i in range(1, len(path_parts) + 1):
             found = 0
-            for config_file_name in self._config_file_names:
+            for config_file_name in file_names:
                 path = Path('').joinpath(*path_parts[:i], config_file_name)
 
                 if path.is_file():
@@ -126,7 +130,7 @@ class Config(Munch):
 
         if not config_files:
             raise ConfigError(
-                f"No config file ({', '.join(self._config_file_names)}) found in '{self.work_dir}' or parent directories"
+                f"No config file ({', '.join(file_names)}) found in '{self.work_dir}' or parent directories"
             )
 
         self.base_dir = os.path.dirname(config_files[0])
