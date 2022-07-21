@@ -75,7 +75,9 @@ test-unit:
     - sed -i 's|<source>.*</source>|<source></source>|g;s|filename="|filename="src/brock/|g' coverage.xml
   artifacts:
     reports:
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 build:
   stage: build
