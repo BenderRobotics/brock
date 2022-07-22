@@ -73,6 +73,8 @@ class Container:
     @property
     def _isolation(self) -> Optional[str]:
         if self._platform == 'windows':
+            if self._image is None:
+                raise ExecutorError('Docker is probably switched to incorrect platform')
             image_version = self._image.attrs['OsVersion'].split('.')[:3]
             info = self._docker.info()
             os_version = info['OSVersion'].split('.')[:3]
