@@ -127,15 +127,20 @@ def main(args=None):
                 executors.append((name, help.strip()))
             cli.custom_epilog = {'Executors': executors}
 
+        cli_error = None
         try:
             result = cli(obj=state, standalone_mode=False)
         except RuntimeError:
             # * Exit and Abort from click
             result = None
+        except Exception as ex:
+            cli_error = ex
 
         if config_error:
             raise config_error
-        if result is not None:
+        elif cli_error:
+            raise cli_error
+        elif result is not None:
             exit_code = result
     except ClickException as ex:
         log.error(ex.message)
