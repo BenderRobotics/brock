@@ -350,7 +350,9 @@ class DockerExecutor(Executor):
     def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
         if not self._container.is_running():
             self._log.info('Executor not running -> starting')
-            self._start()
+            exit_code = self._start()
+            if exit_code != 0:
+                return exit_code
         if not self._synced_in:
             self.sync_in()
 
@@ -381,6 +383,8 @@ class DockerExecutor(Executor):
         for command in self._prepare:
             exit_code = self._container.exec(command, self._mount_dir)
             if exit_code != 0:
+                self._log.error('Failed to execute prepare steps')
+                self._container.stop()
                 return exit_code
         return 0
 
