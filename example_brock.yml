@@ -1,4 +1,4 @@
-version: 0.0.6                # minimum Brock version required to use this config
+version: 0.0.7                # minimum Brock version required to use this config
 project: someprojectname      # name of the project
 help: "brock --help message"  # optional
 commands:                     # optional

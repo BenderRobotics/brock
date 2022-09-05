@@ -8,7 +8,7 @@ from brock.exception import ConfigError
 def test_example_config():
     '''Test the config attached as an example.'''
     config = Config(['example_brock.yml'])
-    assert str(config.version) == '0.0.6'
+    assert str(config.version) == '0.0.7'
     assert config.project == 'someprojectname'
     assert config.help == 'brock --help message'
 
