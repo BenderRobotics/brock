@@ -1,6 +1,6 @@
 import os
 import hiyapyco
-from schema import Schema, Or, Use, Optional, SchemaError
+from schema import Schema, And, Or, Use, Optional, Regex, SchemaError
 import typing as t
 from munch import Munch
 from pathlib import Path
@@ -12,7 +12,7 @@ from brock.log import get_logger
 
 class Config(Munch):
     SCHEMA = {
-        'version': Use(str),
+        'version': And(str, Regex(r'^[0-9]+.[0-9]+.[0-9]+$')),
         'project': str,
         Optional('help'): str,
         Optional('default_cmd'): str,
