@@ -388,12 +388,15 @@ class DockerExecutor(Executor):
                 return exit_code
         return 0
 
-    def _rsync(self, src: str, dest: str, options=['-a', '--delete']):
+    def _rsync(self, src: str, dest: str):
         if self._rsync_container is None:
             return 0
+
+        options = ['-a', '--delete']
         for exclude in self._sync_exclude:
             options.append(f"--exclude '{exclude}'")
 
         exit_code = self._rsync_container.exec(f"rsync {' '.join(options)} {src}/ {dest}", '/')
         if exit_code != 0:
             raise ExecutorError(f'Failed to rsync data')
+        return exit_code
