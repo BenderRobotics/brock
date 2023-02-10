@@ -21,6 +21,7 @@ class Container:
         image: Optional[str] = None,
         dockerfile: Optional[str] = None,
         env: Dict[str, Any] = {},
+        mac_address: str = None,
         devices: List[str] = [],
         volumes: Dict[str, Dict[str, Any]] = {}
     ):
@@ -28,6 +29,7 @@ class Container:
         self._platform = platform
         self._dockerfile = dockerfile
         self._env = env
+        self._mac_address = mac_address
         self._devices = devices
         self._volumes = volumes
 
@@ -159,6 +161,7 @@ class Container:
                 detach=True,
                 stdin_open=True,
                 environment=self._env,
+                mac_address=self._mac_address,
                 platform=self._platform,
                 isolation=self._isolation,
                 devices=self._devices,
@@ -299,6 +302,7 @@ class DockerExecutor(Executor):
             image=self._conf.get('image'),
             dockerfile=dockerfile,
             env=self._conf.get('env', {}),
+            mac_address=self._conf.get('mac_address', None),
             devices=self._conf.get('devices', []),
             volumes=volumes
         )

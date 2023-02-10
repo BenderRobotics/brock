@@ -42,6 +42,7 @@ def test_example_config():
     assert len(config.executors.atollic.env.keys()) == 2
     assert config.executors.atollic.env.SOME_VAR == 'foo'
     assert config.executors.atollic.env.OTHER_VAR == 123
+    assert config.executors.atollic.mac_address == '88:99:aa:bb:cc:dd'
     assert config.executors.atollic.devices == ['class/{interface class GUID}']
     assert config.executors.atollic.default_shell == 'powershell'
 

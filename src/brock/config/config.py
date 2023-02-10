@@ -42,6 +42,7 @@ class Config(Munch):
                     Optional('env'): {
                         str: Or(str, int, float)
                     },
+                    Optional('mac_address'): And(str, Regex(r'^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$')),
                     Optional('devices'): [str],
                     Optional('sync'): {
                         'type': 'rsync',
