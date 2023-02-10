@@ -261,6 +261,9 @@ class DockerExecutor(Executor):
         self._sync_type = None
         self._synced_in = False
         if 'sync' in self._conf:
+            self._sync_options = self._conf.sync.get('options', None)
+            self._sync_filter = self._conf.sync.get('filter', [])
+            self._sync_include = self._conf.sync.get('include', [])
             self._sync_exclude = self._conf.sync.get('exclude', [])
             self._sync_type = self._conf.sync.type
 
@@ -392,7 +395,18 @@ class DockerExecutor(Executor):
         if self._rsync_container is None:
             return 0
 
-        options = ['-a', '--delete']
+        if self._sync_options is not None:
+            options = []
+            for option in self._sync_options:
+                options.append(f'{option}')
+        else:
+            # use default options
+            options = ['-a', '--delete']
+
+        for filter_ in self._sync_filter:
+            options.append(f"--filter '{filter_}'")
+        for include in self._sync_include:
+            options.append(f"--include '{include}'")
         for exclude in self._sync_exclude:
             options.append(f"--exclude '{exclude}'")
 

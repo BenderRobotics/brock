@@ -48,6 +48,16 @@ executors:                    # optional - if not present, only host executor ca
     image: python:3.9         # use image from registry
     sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under windows
       type: rsync             # only rsync mode currently supported
+      options:                # optional - rsync parameters
+        - "-avm"
+      filter:                 # optional - rsync --filter rules. It is recommended to not use include and exclude if filter is used
+        - "+ foo/"            # add foo directory to path
+        - "+ foo/**/"         # add all subdirectories in foo/ to path
+        - "+ foo/**.c"        # add all files ending with `.c` in foo and all its subdirectories
+        - "+ foo/src/**"      # add all files in foo/src/ and all its subdirectories
+        - "- *"               # exclude all other files
+      include:                # optional - directories to include to syncing (applied before exclude)
+        - foo/bar
       exclude:                # optional - directories to exclude from syncing
         - foo/bar
     devices:                  # optional - mount devices to container - works only for linux containers on linux host

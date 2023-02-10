@@ -45,6 +45,9 @@ class Config(Munch):
                     Optional('devices'): [str],
                     Optional('sync'): {
                         'type': 'rsync',
+                        Optional('options'): [str],
+                        Optional('filter'): [str],
+                        Optional('include'): [str],
                         Optional('exclude'): [str],
                     },
                     Optional('prepare'): [str],

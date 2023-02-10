@@ -48,6 +48,9 @@ def test_example_config():
     assert config.executors.python.type == 'docker'
     assert config.executors.python.image == 'python:3.9'
     assert config.executors.python.sync.type == 'rsync'
+    assert config.executors.python.sync.options == ['-avm']
+    assert config.executors.python.sync.filter == ['+ foo/', '+ foo/**/', '+ foo/**.c', '+ foo/src/**', '- *']
+    assert config.executors.python.sync.include == ['foo/bar']
     assert config.executors.python.sync.exclude == ['foo/bar']
     assert config.executors.python.devices == ['/dev/ttyUSB0:/dev/ttyUSB0:rwm']
     assert config.executors.python.prepare == [
