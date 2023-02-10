@@ -383,6 +383,7 @@ class DockerExecutor(Executor):
             return 0
 
         self.sync_in()
+        self._container.start()
         for command in self._prepare:
             exit_code = self._container.exec(command, self._mount_dir)
             if exit_code != 0:
