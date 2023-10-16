@@ -48,6 +48,9 @@ class Config(Munch):
                     },
                     Optional('mac_address'):
                         And(str, Regex(r'^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$')),
+                    Optional('ports', default={}): {
+                        Or(int, And(str, Regex(r'^\d+/(tcp|udp|sctp)'))): int
+                    },
                     Optional('devices'): [str],
                     Optional('sync'):
                         Or(

@@ -4,7 +4,7 @@ import subprocess
 import docker
 import time
 
-from typing import Optional, Union, Sequence, Dict, List, Any
+from typing import Optional, Union, Sequence, Dict, List, Any, Union
 from brock.log import get_logger
 from brock.executors import Executor
 from brock.config.config import Config
@@ -22,6 +22,7 @@ class Container:
         dockerfile: Optional[str] = None,
         env: Dict[str, Any] = {},
         mac_address: str = None,
+        ports: Dict[Union[str, int], int] = {},
         devices: List[str] = [],
         volumes: Dict[str, Dict[str, Any]] = {},
         run_endpoint: str = None
@@ -31,6 +32,7 @@ class Container:
         self._dockerfile = dockerfile
         self._env = env
         self._mac_address = mac_address
+        self._ports = ports
         self._devices = devices
         self._volumes = volumes
         self._run_endpoint = run_endpoint
@@ -174,6 +176,7 @@ class Container:
                 stdin_open=True,
                 environment=self._env,
                 mac_address=self._mac_address,
+                ports=self._ports,
                 platform=self._platform,
                 isolation=self._isolation,
                 devices=self._devices,
@@ -328,6 +331,7 @@ class DockerExecutor(Executor):
             dockerfile=dockerfile,
             env=self.env_vars,
             mac_address=self._conf.get('mac_address', None),
+            ports=self._conf.get('ports'),
             devices=self._conf.get('devices', []),
             volumes=volumes,
             run_endpoint=run_endpoint

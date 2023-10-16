@@ -40,6 +40,9 @@ executors:                    # optional - if not present, only host executor ca
       SOME_VAR: foo
       OTHER_VAR: 123
     mac_address: 88:99:aa:bb:cc:dd # optional - custom MAC address of the container
+    ports:                    # optional - expose ports to outside world
+      5000: 5000
+      6000/udp: 6000
     devices:                  # optional - pass devices to windows containers (isolation=process only)
       # https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/hardware-devices-in-containers
       - class/{interface class GUID}

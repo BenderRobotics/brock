@@ -43,6 +43,7 @@ def test_example_config():
     assert config.executors.atollic.env.SOME_VAR == 'foo'
     assert config.executors.atollic.env.OTHER_VAR == 123
     assert config.executors.atollic.mac_address == '88:99:aa:bb:cc:dd'
+    assert config.executors.atollic.ports == {5000: 5000, '6000/udp': 6000}
     assert config.executors.atollic.devices == ['class/{interface class GUID}']
     assert config.executors.atollic.default_shell == 'powershell'
 
