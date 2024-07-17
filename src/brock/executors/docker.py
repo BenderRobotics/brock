@@ -380,6 +380,8 @@ class DockerExecutor(Executor):
 
     def stop(self):
         self._container.stop()
+        if 'sync' in self._conf and self._sync_type == 'rsync' and self._rsync_container:
+            self._rsync_container.stop()
 
     def restart(self) -> int:
         self.stop()
