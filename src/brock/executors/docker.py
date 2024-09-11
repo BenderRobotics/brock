@@ -216,9 +216,9 @@ class Container:
             try:
                 for chunk in output:
                     if chunk[0]:
-                        print(chunk[0].decode(), end='')
+                        print(chunk[0].decode('utf-8', 'replace'), end='')
                     if chunk[1]:
-                        print(chunk[1].decode(), end='', file=sys.stderr)
+                        print(chunk[1].decode('utf-8', 'replace'), end='', file=sys.stderr)
             except KeyboardInterrupt:
                 self._log.warning('Execution interrupted')
 
