@@ -20,6 +20,8 @@ class ColoredStreamHandler(StreamHandler):
         'DEBUG': Fore.CYAN,
         'EXTRA_INFO': Fore.GREEN,
         'INFO': Fore.GREEN,
+        'STDOUT': Fore.RESET,
+        'STDERR': Fore.RED,
         'WARNING': Fore.YELLOW + Style.BRIGHT,
         'ERROR': Fore.RED + Style.BRIGHT,
         'CRITICAL': Fore.RED + Style.BRIGHT,
@@ -36,15 +38,14 @@ class ColoredStreamHandler(StreamHandler):
 
 
 class DefaultFormatter(logging.Formatter):
-    def __init__(self, fmt=">> %(message)s"):
+    def __init__(self, fmt="%(message)s"):
         logging.Formatter.__init__(self, fmt)
 
     def format(self, record):
-        orig_format = self._fmt
-
         ret = logging.Formatter.format(self, record)
 
-        self._fmt = orig_format
+        if record.levelno not in (STDOUT, STDERR):
+            ret = f'>> {ret}'
 
         return ret
 
@@ -106,6 +107,8 @@ FATAL = logging.FATAL
 ERROR = logging.ERROR
 WARNING = logging.WARNING
 WARN = logging.WARN
+STDERR = logging.INFO + 2
+STDOUT = logging.INFO + 1
 INFO = logging.INFO
 EXTRA_INFO = logging.INFO - 5
 DEBUG = logging.DEBUG
@@ -117,19 +120,49 @@ VERBOSITY = INFO
 logging._levelToName[EXTRA_INFO] = 'EXTRA_INFO'
 logging._nameToLevel['EXTRA_INFO'] = EXTRA_INFO
 
+logging._levelToName[STDOUT] = 'STDOUT'
+logging._nameToLevel['STDOUT'] = STDOUT
+
+logging._levelToName[STDERR] = 'STDERR'
+logging._nameToLevel['STDERR'] = STDERR
+
 
 class Logger(logging.getLoggerClass()):
     def extra_info(self, msg, *args, **kwargs):
         """
-        Log 'msg % args' with severity 'INFO'.
+        Log 'msg % args' with severity 'EXTRA_INFO'.
 
         To pass exception information, use the keyword argument exc_info with
         a true value, e.g.
 
-        logger.info("Houston, we have a %s", "interesting problem", exc_info=1)
+        logger.extra_info("Houston, we have a %s", "interesting problem", exc_info=1)
         """
         if self.isEnabledFor(EXTRA_INFO):
             self._log(EXTRA_INFO, msg, args, **kwargs)
+
+    def stdout(self, msg, *args, **kwargs):
+        """
+        Log 'msg % args' with severity 'STDOUT'.
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.stdout("Houston, we have a %s", "interesting problem", exc_info=1)
+        """
+        if self.isEnabledFor(STDOUT):
+            self._log(STDOUT, msg, args, **kwargs)
+
+    def stderr(self, msg, *args, **kwargs):
+        """
+        Log 'msg % args' with severity 'STDERR'.
+
+        To pass exception information, use the keyword argument exc_info with
+        a true value, e.g.
+
+        logger.stderr("Houston, we have a %s", "interesting problem", exc_info=1)
+        """
+        if self.isEnabledFor(STDERR):
+            self._log(STDERR, msg, args, **kwargs)
 
 
 logging.Logger

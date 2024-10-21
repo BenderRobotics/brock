@@ -215,10 +215,10 @@ class Toolchain:
             for chunk in res.output:
                 if chunk[0]:
                     for line in chunk[0].split(b"\n"):
-                        self._log.info(line.decode())
+                        self._log.stdout(line.decode())
                 if chunk[1]:
                     for line in chunk[1].split(b"\n"):
-                        self._log.warning(line.decode())
+                        self._log.stderr(line.decode())
         except KeyboardInterrupt:
             self._log.warning("Execution interrupted")
 
