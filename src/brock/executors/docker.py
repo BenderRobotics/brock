@@ -1,4 +1,5 @@
 import os
+import subprocess
 import docker
 import hashlib
 import time
@@ -100,6 +101,20 @@ class DockerExecutor(Executor):
             if self._volume_sync == 'rsync':
                 self._stop_container(self._rsync_name)
 
+    def restart(self) -> int:
+        self.stop()
+        time.sleep(1)
+        return self._start()
+
+    def update(self):
+        if self._dockerfile:
+            self._build()
+        else:
+            self._pull_image(self._image_name, self._image_tag, self._platform)
+
+        if self._is_running():
+            self.restart()
+
     def exec(self, command: str, chdir: Optional[str] = None) -> int:
         if not self._is_running():
             self._log.info('Executor not running -> starting')
@@ -115,19 +130,24 @@ class DockerExecutor(Executor):
 
         return exit_code
 
-    def restart(self) -> int:
-        self.stop()
-        time.sleep(1)
-        return self._start()
+    def shell(self) -> int:
+        if not self._is_running():
+            self._log.info('Executor not running -> starting')
+            self._start()
 
-    def update(self):
-        if self._dockerfile:
-            self._build()
-        else:
-            self._pull_image(self._image_name, self._image_tag, self._platform)
+        if self._sync_needed:
+            self._rsync_in()
 
-        if self._is_running():
-            self.restart()
+        shell = self.get_default_shell()
+        if shell is None:
+            raise ExecutorError('Shell is not defined')
+
+        command = ['docker', 'exec', '-it', '-w', self._work_dir, self._name, shell]
+
+        self._log.extra_info(f'Starting shell ({shell}) in container {self._name}')
+        self._log.debug(f'Work dir: {self._work_dir}')
+
+        return subprocess.run(command).returncode
 
     @property
     def _docker(self):
