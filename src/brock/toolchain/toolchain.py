@@ -54,13 +54,18 @@ class Toolchain:
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to get image info: {ex}")
 
-        try:
-            self._docker.containers.get(self._name)
+        if self._is_container_running(self._name):
             self._log.info(f"Container {self._name} is running")
-        except docker.errors.NotFound as ex:
+        else:
             self._log.warning(f"Container {self._name} is not running")
-        except docker.errors.APIError as ex:
-            raise ToolchainError(f"Failed to get container info: {ex}")
+
+    def is_running(self):
+        if not self._is_container_running(self._name):
+            return False
+        if self._volume_sync == "rsync" and not self._is_container_running(self._rsync_name):
+            return False
+
+        return True
 
     def login(self, username, password):
         image_parts = self._image_name.split('/')
@@ -130,6 +135,10 @@ class Toolchain:
             self._stop_container(f"{self._rsync_name}")
 
     def exec(self, command):
+        if not self.is_running():
+            self._log.info('Toolchain not running -> starting')
+            self.start()
+
         if self._volume_sync == "rsync":
             self._rsync_in()
 
@@ -146,17 +155,21 @@ class Toolchain:
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to pull image: {ex}")
 
+    def _is_container_running(self, name):
+        try:
+            self._docker.containers.get(name)
+            return True
+        except docker.errors.NotFound as ex:
+            return False
+        except docker.errors.APIError as ex:
+            raise ToolchainError(f"Failed to get container info: {ex}")
+
     def _start_container(self, name, image_name, image_tag, **kwargs):
         self._log.extra_info(f"Starting container {name}")
 
-        try:
-            self._docker.containers.get(name)
+        if self._is_container_running(name):
             self._log.warning("Container is already running")
             return
-        except docker.errors.NotFound as ex:
-            pass
-        except docker.errors.APIError as ex:
-            raise ToolchainError(f"Failed to get container info: {ex}")
 
         try:
             res = self._docker.containers.run(
