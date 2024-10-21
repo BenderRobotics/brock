@@ -1,0 +1,20 @@
+version: 0.0.6
+project: brock
+
+executors:
+  python:
+    type: docker
+    image: python:3.7
+    prepare:
+      - pip install -r requirements.txt
+      - pip install wheel pytest pytest-cov
+
+commands:
+  build:
+    steps:
+      - python setup.py bdist_wheel -d dist/
+      - python setup.py sdist -d dist/
+
+  test:
+    steps:
+      - pytest tests/
