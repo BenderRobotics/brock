@@ -1,11 +1,11 @@
 import sys
 import click
 import logging.config
-from click.exceptions import ClickException
+from click.exceptions import ClickException, UsageError
 
 from brock.exception import BaseBrockException
 from brock import __version__
-from .commands import init, start, stop, run
+from .commands import status, init, start, stop, restart, exec
 
 
 from brock.log import DEFAULT_LOGGING, getLogger
@@ -13,7 +13,7 @@ from brock.log import DEFAULT_LOGGING, getLogger
 logging.config.dictConfig(DEFAULT_LOGGING)
 
 
-@click.group(invoke_without_command=False)
+@click.group(invoke_without_command=True, no_args_is_help=True)
 @click.option("--version", is_flag=True, multiple=False, help="Show package version")
 def cli(version):
     if version:
@@ -21,10 +21,12 @@ def cli(version):
         raise RuntimeError()
 
 
+cli.add_command(status)
 cli.add_command(init)
 cli.add_command(start)
 cli.add_command(stop)
-cli.add_command(run)
+cli.add_command(restart)
+cli.add_command(exec)
 
 
 def main(args=None):

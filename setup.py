@@ -78,7 +78,8 @@ setup(
         "click",
         "hiyapyco",
         "schema",
-        "munch"
+        "munch",
+        "docker"
     ],
     zip_safe=False
 )

@@ -11,3 +11,7 @@ class ConfigError(BaseBrockException):
 
 class UsageError(BaseBrockException):
     ERROR_CODE = 20
+
+
+class ToolchainError(BaseBrockException):
+    ERROR_CODE = 30

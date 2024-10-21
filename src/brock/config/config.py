@@ -10,11 +10,12 @@ from brock.log import getLogger
 class Config(Munch):
     SCHEMA = {
         'project': {
-            'name': And(Use(str)),
-            'base_path': And(Use(str))
+            'name': And(Use(str))
         },
         'toolchain': {
             'image': And(Use(str)),
+            Optional('platform'): And(Use(str)),
+            Optional('isolation'): And(Use(str)),
             Optional('default_cmd'): And(Use(str))
         }
     }
@@ -28,8 +29,6 @@ class Config(Munch):
     def load(self):
         # scan for config files
         config_files = self._scan_files()
-        if not config_files:
-            raise ConfigError("No config files found")
 
         # merge config files
         try:
@@ -49,17 +48,27 @@ class Config(Munch):
         return Munch.fromDict(conf)
 
     def _scan_files(self):
-        cwd = os.getcwd()
+        self.work_dir = os.getcwd().replace("\\", "/")
 
-        self._log.extra_info(f"Scanning config files, current dir: {cwd}")
+        self._log.extra_info(f"Scanning config files, work dir: {self.work_dir}")
 
         config_files = []
-        path_parts = self._split_path(cwd)
+        path_parts = self._split_path(self.work_dir)
         for i in range(1, len(path_parts) + 1):
-            path = os.path.join(*path_parts[:i], self._config_file_name)
+            path = os.path.join(*path_parts[:i], self._config_file_name).replace("\\", "/")
             if os.path.isfile(path):
                 self._log.debug(f"Found config file: {path}")
                 config_files.append(path)
+
+        if not config_files:
+            raise ConfigError("No config files found")
+
+        self.base_dir = os.path.dirname(config_files[0])
+        self._log.debug(f"Base dir: {self.base_dir}")
+
+        common_prefix = os.path.commonprefix([self.work_dir, self.base_dir])
+        self.work_dir_rel = os.path.relpath(self.work_dir, common_prefix).replace("\\", "/")
+        self._log.debug(f"Relative work dir: {self.work_dir_rel}")
 
         return config_files
 
