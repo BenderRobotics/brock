@@ -5,7 +5,7 @@ from click.exceptions import ClickException, UsageError
 
 from brock.exception import BaseBrockException
 from brock import __version__
-from .commands import status, login, init, start, stop, restart, exec
+from .commands import status, init, start, stop, restart, exec
 
 
 from brock.log import DEFAULT_LOGGING, getLogger
@@ -22,7 +22,6 @@ def cli(version):
 
 
 cli.add_command(status)
-cli.add_command(login)
 cli.add_command(init)
 cli.add_command(start)
 cli.add_command(stop)

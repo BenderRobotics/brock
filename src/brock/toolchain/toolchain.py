@@ -67,22 +67,6 @@ class Toolchain:
 
         return True
 
-    def login(self, username, password):
-        image_parts = self._image_name.split('/')
-
-        try:
-            if len(image_parts) > 0 and '.' in image_parts[0]:
-                # custom registry
-                self._log.extra_info(f"Registry address: {image_parts[0]}")
-                self._docker.login(username, password, registry=image_parts[0], reauth=True)
-            else:
-                # default registry
-                self._docker.login(username, password, reauth=True)
-        except docker.errors.APIError as ex:
-            raise ToolchainError(f"Failed to login into registry: {ex}")
-
-        self._log.info('Login succeeded')
-
     def pull(self):
         self._pull_image(self._image_name, self._image_tag, self._platform)
 

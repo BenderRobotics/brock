@@ -22,20 +22,6 @@ def status(state):
 @click.command()
 @shared_arguments
 @pass_state
-@click.option('--username', help='The registry username', prompt=True)
-@click.option('--password', help='The registry password', prompt=True, hide_input=True)
-def login(state, username, password):
-    log = getLogger()
-    config = Config()
-
-    log.info(f"Logging into registry")
-
-    toolchain = Toolchain(config)
-    toolchain.login(username, password)
-
-@click.command()
-@shared_arguments
-@pass_state
 def init(state):
     log = getLogger()
     config = Config()
