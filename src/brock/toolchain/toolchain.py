@@ -7,15 +7,23 @@ from brock.log import getLogger
 
 
 class Toolchain:
+    _HOST_PATH = "/host"
+
+    _RSYNC_IMAGE_NAME = "eeacms/rsync"
+    _RSYNC_IMAGE_TAG = "2.3"
+    _RSYNC_PLATFORM = "linux"
+    _RSYNC_PATH = "/rsync_volume"
+
     def __init__(self, config):
         self._name = f"brock-{config.project.name}"
         self._base_dir = config.base_dir
 
         if config.toolchain.platform == "windows":
-            self._mount_dir = "C:/host"
+            self._mount_dir = f"C:{self._HOST_PATH}"
         else:
-            self._mount_dir = "/host"
-        self._work_dir = os.path.join(self._mount_dir, config.work_dir_rel).replace("\\", "/")
+            self._mount_dir = self._HOST_PATH
+        self._work_dir_rel = config.work_dir_rel.replace("\\", "/")
+        self._work_dir = os.path.join(self._mount_dir, self._work_dir_rel).replace("\\", "/")
 
         image_parts = config.toolchain.image.split(':')
         if len(image_parts) == 2:
@@ -29,6 +37,10 @@ class Toolchain:
 
         self._platform = config.toolchain.get("platform", "linux")
         self._isolation = config.toolchain.get("isolation", None)
+        self._volume_sync = config.toolchain.get("volume_sync", None)
+        if self._volume_sync == "rsync":
+            self._rsync_name = f"{self._name}-rsync"
+            self._rsync_volume_name = f"{self._name}-rsync-volume"
 
         self._log = getLogger()
         self._docker = docker.from_env()
@@ -52,26 +64,78 @@ class Toolchain:
             raise ToolchainError(f"Failed to get container info: {ex}")
 
     def pull(self):
-        self._log.extra_info(f"Pulling image {self._image_name}:{self._image_tag}")
+        self._pull_image(self._image_name, self._image_tag, self._platform)
+
+        if self._volume_sync == "rsync":
+            self._pull_image(self._RSYNC_IMAGE_NAME, self._RSYNC_IMAGE_TAG, self._RSYNC_PLATFORM)
+
+    def start(self):
+        if self._volume_sync == "rsync":
+            rsync_volume = self._create_volume(self._rsync_volume_name)
+
+            volumes_rsync = {
+                rsync_volume.name: {
+                    "bind": self._RSYNC_PATH,
+                    "mode": "rw"
+                },
+                self._base_dir: {
+                    "bind": self._HOST_PATH,
+                    "mode": "rw"
+                }
+            }
+
+            self._start_container(
+                f"{self._rsync_name}", self._RSYNC_IMAGE_NAME, self._RSYNC_IMAGE_TAG,
+                platform=self._RSYNC_PLATFORM, volumes=volumes_rsync, entrypoint="")
+
+            self._rsync_in()
+
+            volumes = {
+                rsync_volume.name: {
+                    "bind": self._mount_dir,
+                    "mode": "rw"
+                }
+            }
+        else:
+            volumes = {
+                self._base_dir: {
+                    "bind": self._mount_dir,
+                    "mode": "rw"
+                }
+            }
+
+        self._start_container(
+            self._name, self._image_name, self._image_tag,
+            platform=self._platform, isolation=self._isolation, volumes=volumes)
+
+    def stop(self):
+        self._stop_container(self._name)
+
+        if self._volume_sync == "rsync":
+            self._stop_container(f"{self._rsync_name}")
+
+    def exec(self, command):
+        if self._volume_sync == "rsync":
+            self._rsync_in()
+
+        self._exec_command(self._name, command, self._work_dir)
+
+        if self._volume_sync == "rsync":
+            self._rsync_out()
+
+    def _pull_image(self, image_name, image_tag, platform):
+        self._log.extra_info(f"Pulling image {image_name}:{image_tag}")
         try:
-            res = self._docker.images.pull(
-                self._image_name, self._image_tag, platform=self._platform)
+            res = self._docker.images.pull(image_name, image_tag, platform=platform)
             self._log.debug(res)
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to pull image: {ex}")
 
-    def start(self):
-        self._log.extra_info(f"Starting container {self._name}")
-
-        volumes = {
-            self._base_dir: {
-                "bind": self._mount_dir,
-                "mode": "rw"
-            }
-        }
+    def _start_container(self, name, image_name, image_tag, **kwargs):
+        self._log.extra_info(f"Starting container {name}")
 
         try:
-            self._docker.containers.get(self._name)
+            self._docker.containers.get(name)
             self._log.warning("Container is already running")
             return
         except docker.errors.NotFound as ex:
@@ -81,42 +145,41 @@ class Toolchain:
 
         try:
             res = self._docker.containers.run(
-                f"{self._image_name}:{self._image_tag}", name=self._name, platform=self._platform,
-                isolation=self._isolation, volumes=volumes, auto_remove=True, detach=True,
-                stdin_open=True)
+                image=f"{image_name}:{image_tag}", name=name, auto_remove=True, detach=True,
+                stdin_open=True, **kwargs)
             self._log.debug(res)
         except docker.errors.ImageNotFound as ex:
             raise ToolchainError(
-                f"Image {self._image_name}:{self._image_tag} not found."
+                f"Image {image} not found."
                 f"Try running brock init first")
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to start container: {ex}")
 
-    def stop(self):
-        self._log.extra_info(f"Stopping container {self._name}")
+    def _stop_container(self, name):
+        self._log.extra_info(f"Stopping container {name}")
 
         try:
-            container = self._docker.containers.get(self._name)
+            container = self._docker.containers.get(name)
             container.stop()
         except docker.errors.NotFound as ex:
             self._log.warning("Container not running")
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to stop container: {ex}")
 
-    def exec(self, command):
-        self._log.extra_info(f"Executing command in container {self._name}")
+    def _exec_command(self, container, command, work_dir):
+        self._log.extra_info(f"Executing command in container {container}")
         self._log.debug(f"Command: {command}")
-        self._log.debug(f"Work dir: {self._work_dir}")
+        self._log.debug(f"Work dir: {work_dir}")
 
         try:
-            container = self._docker.containers.get(self._name)
+            container = self._docker.containers.get(container)
         except docker.errors.NotFound as ex:
             raise ToolchainError("Container not running")
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to get container info: {ex}")
 
         try:
-            res = container.exec_run(command, stream=True, demux=True, workdir=self._work_dir)
+            res = container.exec_run(command, stream=True, demux=True, workdir=work_dir)
         except docker.errors.APIError as ex:
             raise ToolchainError(f"Failed to execute command: {ex}")
 
@@ -130,3 +193,33 @@ class Toolchain:
                         self._log.warning(line.decode())
         except KeyboardInterrupt:
             self._log.warning("Execution interrupted")
+
+    def _create_volume(self, name):
+        try:
+            volumes = self._docker.volumes.list()
+        except docker.errors.APIError as ex:
+            raise ToolchainError(f"Failed to list volumes: {ex}")
+
+        volume = next((v for v in volumes if v.name == name), None)
+
+        if volume is None:
+            self._log.extra_info(f"Creating volume {name}")
+            try:
+                volume = self._docker.volumes.create(name)
+            except docker.errors.APIError as ex:
+                raise ToolchainError(f"Failed to create volume: {ex}")
+
+        return volume
+
+    def _rsync_in(self):
+        self._log.extra_info(f"Rsyncing data into toolchain")
+        self._rsync(self._HOST_PATH, self._RSYNC_PATH)
+
+    def _rsync_out(self):
+        self._log.extra_info(f"Rsyncing data out of toolchain")
+        self._rsync(
+            f"{self._RSYNC_PATH}/{self._work_dir_rel}",
+            f"{self._HOST_PATH}/{self._work_dir_rel}")
+
+    def _rsync(self, src, dest, options=['-a', '--delete']):
+        self._exec_command(f"{self._rsync_name}", f"rsync {' '.join(options)} {src}/ {dest}", "/")

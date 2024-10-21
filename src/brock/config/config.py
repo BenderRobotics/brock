@@ -14,8 +14,15 @@ class Config(Munch):
         },
         'toolchain': {
             'image': And(Use(str)),
-            Optional('platform'): And(Use(str)),
-            Optional('isolation'): And(Use(str)),
+            Optional('platform'): And(
+                str, Use(str.lower),
+                lambda s: s in ('linux', 'windows')),
+            Optional('isolation'): And(
+                str, Use(str.lower),
+                lambda s: s in ('process', 'hyperv', 'default')),
+            Optional('volume_sync'): And(
+                str, Use(str.lower),
+                lambda s: s in ('rsync', 'no')),
             Optional('default_cmd'): And(Use(str))
         }
     }
