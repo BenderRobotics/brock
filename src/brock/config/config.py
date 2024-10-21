@@ -35,24 +35,34 @@ class Config(Munch):
                 str,
             Optional(str):
                 Or({
-                    'type': 'docker',
-                    Optional('help'): str,
-                    Or('image', 'dockerfile', only_one=True): str,
-                    Optional('platform'): str,
+                    'type':
+                        'docker',
+                    Optional('help'):
+                        str,
+                    Or('image', 'dockerfile', only_one=True):
+                        str,
+                    Optional('platform'):
+                        str,
                     Optional('env'): {
                         str: Or(str, int, float)
                     },
-                    Optional('mac_address'): And(str, Regex(r'^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$')),
+                    Optional('mac_address'):
+                        And(str, Regex(r'^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$')),
                     Optional('devices'): [str],
-                    Optional('sync'): {
-                        'type': 'rsync',
-                        Optional('options'): [str],
-                        Optional('filter'): [str],
-                        Optional('include'): [str],
-                        Optional('exclude'): [str],
-                    },
+                    Optional('sync'):
+                        Or(
+                            {
+                                'type': 'rsync',
+                                Optional('options'): [str],
+                                Optional('filter'): [str],
+                                Optional('include'): [str],
+                                Optional('exclude'): [str],
+                            },
+                            {'type': 'mutagen'},
+                        ),
                     Optional('prepare'): [str],
-                    Optional('default_shell'): str,
+                    Optional('default_shell'):
+                        str,
                 }, {
                     'type': 'ssh',
                     Optional('help'): str,

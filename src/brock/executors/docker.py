@@ -23,7 +23,8 @@ class Container:
         env: Dict[str, Any] = {},
         mac_address: str = None,
         devices: List[str] = [],
-        volumes: Dict[str, Dict[str, Any]] = {}
+        volumes: Dict[str, Dict[str, Any]] = {},
+        run_endpoint: str = None
     ):
         self.name = name
         self._platform = platform
@@ -32,6 +33,7 @@ class Container:
         self._mac_address = mac_address
         self._devices = devices
         self._volumes = volumes
+        self._run_endpoint = run_endpoint
 
         self._log = get_logger()
 
@@ -50,6 +52,16 @@ class Container:
             self._image_tag = 'latest'
         else:
             raise ExecutorError('Invalid docker image')
+
+    @property
+    def _docker_run(self) -> docker.DockerClient:
+        try:
+            if self._run_endpoint:
+                return docker.DockerClient(base_url=self._run_endpoint)
+            else:
+                return docker.from_env()
+        except docker.errors.DockerException:
+            raise ExecutorError('Docker engine is not running')
 
     @property
     def _docker(self) -> docker.DockerClient:
@@ -154,7 +166,7 @@ class Container:
         self._log.info(f'Starting container {self.name}')
         self._create_volumes()
         try:
-            res = self._docker.containers.run(
+            res = self._docker_run.containers.run(
                 image=f'{self._image_name}:{self._image_tag}',
                 name=self.name,
                 auto_remove=True,
@@ -261,36 +273,47 @@ class DockerExecutor(Executor):
         self._work_dir_rel = config.work_dir_rel.replace('\\', '/')
         self._work_dir = os.path.join(self._mount_dir, self._work_dir_rel).replace('\\', '/')
 
-        self._rsync_volume_name = f'{config.project}-rsync-volume-{self._hashed_base_dir}'
-        self._rsync_container = None
-        self._sync_type = None
-        self._synced_in = False
         if 'sync' in self._conf:
             self._sync_options = self._conf.sync.get('options', None)
             self._sync_filter = self._conf.sync.get('filter', [])
             self._sync_include = self._conf.sync.get('include', [])
             self._sync_exclude = self._conf.sync.get('exclude', [])
             self._sync_type = self._conf.sync.type
+        else:
+            self._sync_type = None
+        self._synced_in = False
+        run_endpoint = None
+        if self._sync_type == 'rsync':
+            self._sync_exclude = self._conf.sync.get('exclude', [])
 
-            if self._sync_type == 'rsync':
-                self._rsync_container = Container(
-                    f'brock-{config.project}-rsync-{self._hashed_base_dir}',
-                    platform='linux',
-                    image='eeacms/rsync:2.3',
-                    volumes={
-                        self._rsync_volume_name: {
-                            'bind': self._RSYNC_PATH,
-                            'mode': 'rw'
-                        },
-                        self._base_dir: {
-                            'bind': self._HOST_PATH,
-                            'mode': 'rw'
-                        }
+            self._rsync_volume_name = f'{config.project}-rsync-volume-{self._hashed_base_dir}'
+            self._rsync_container = None
+
+            self._rsync_container = Container(
+                f'brock-{config.project}-rsync-{self._hashed_base_dir}',
+                platform='linux',
+                image='eeacms/rsync:2.3',
+                volumes={
+                    self._rsync_volume_name: {
+                        'bind': self._RSYNC_PATH,
+                        'mode': 'rw'
+                    },
+                    self._base_dir: {
+                        'bind': self._HOST_PATH,
+                        'mode': 'rw'
                     }
-                )
-                volumes = {self._rsync_volume_name: {'bind': self._mount_dir, 'mode': 'rw'}}
-            else:
-                raise ConfigError('Invalid sync type')
+                }
+            )
+            volumes = {self._rsync_volume_name: {'bind': self._mount_dir, 'mode': 'rw'}}
+        elif self._sync_type == 'mutagen':
+            try:
+                contexts = docker.context.ContextAPI.contexts()
+                context = next(c for c in contexts if c.name == 'desktop-linux-mutagen')
+                run_endpoint = context.endpoints['docker']['Host']
+            except:
+                self._log.warning('Failed to get mutagen context, is Mutagen Extension for Docker Desktop installed?')
+
+            volumes = {self._base_dir: {'bind': self._mount_dir, 'mode': 'rw'}}
         else:
             volumes = {self._base_dir: {'bind': self._mount_dir, 'mode': 'rw'}}
 
@@ -306,7 +329,8 @@ class DockerExecutor(Executor):
             env=self.env_vars,
             mac_address=self._conf.get('mac_address', None),
             devices=self._conf.get('devices', []),
-            volumes=volumes
+            volumes=volumes,
+            run_endpoint=run_endpoint
         )
 
     def sync_in(self):
@@ -314,23 +338,28 @@ class DockerExecutor(Executor):
             return
 
         if self._sync_type == 'rsync':
+            if self._rsync_container is None:
+                return
             self._log.extra_info(f'Rsyncing data into docker volume')
             self._rsync(self._HOST_PATH, self._RSYNC_PATH)
+        elif self._sync_type == 'mutagen':
+            pass
         else:
             raise ExecutorError('Unknown sync type')
 
         self._synced_in = True
 
     def sync_out(self):
-        if self._rsync_container is None:
-            return
-
         if not self._synced_in:
             return
 
         if self._sync_type == 'rsync':
+            if self._rsync_container is None:
+                return
             self._log.extra_info(f'Rsyncing data out of docker volume')
             self._rsync(self._RSYNC_PATH, self._HOST_PATH)
+        elif self._sync_type == 'mutagen':
+            pass
         else:
             raise ExecutorError('Unknown sync type')
 

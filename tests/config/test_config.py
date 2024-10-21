@@ -31,7 +31,7 @@ def test_example_config():
     assert config.commands.service.steps[0].script == \
         '$ServiceName = \'EventLog\'\n$ServiceInfo = Get-Service -Name $ServiceName\nWrite-Output $ServiceInfo\n'
 
-    assert len(config.executors.keys()) == 4
+    assert len(config.executors.keys()) == 5
 
     assert config.executors.default == 'python'
 
@@ -58,6 +58,10 @@ def test_example_config():
         'pip install -r requirements.txt',
         'echo "Foo bar"',
     ]
+
+    assert config.executors.gcc.type == 'docker'
+    assert config.executors.gcc.image == 'gcc'
+    assert config.executors.gcc.sync.type == 'mutagen'
 
     assert config.executors.remote.type == 'ssh'
     assert config.executors.remote.host == 'somesite.example.com:1235'

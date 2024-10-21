@@ -48,7 +48,7 @@ executors:                    # optional - if not present, only host executor ca
     type: docker
     image: python:3.9         # use image from registry
     sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under windows
-      type: rsync             # only rsync mode currently supported
+      type: rsync             # rsync volume synchronization
       options:                # optional - rsync parameters
         - "-avm"
       filter:                 # optional - rsync --filter rules. It is recommended to not use include and exclude if filter is used
@@ -66,6 +66,11 @@ executors:                    # optional - if not present, only host executor ca
     prepare:                  # optional, commands to run after starting a container
       - pip install -r requirements.txt
       - echo "Foo bar"
+  gcc:
+    type: docker
+    image: gcc                # use image from registry
+    sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under windows
+      type: mutagen           # mutagen volume synchronization
   remote:
     type: ssh
     host: somesite.example.com:1235 # SSH host to run the commands on
