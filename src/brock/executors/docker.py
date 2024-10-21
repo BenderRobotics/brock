@@ -246,6 +246,8 @@ class DockerExecutor(Executor):
         self._platform = self._conf.get('platform', 'linux')
         self._prepare = self._conf.get('prepare', [])
 
+        self.env_vars.update(self._conf.get('env', {}))
+
         if self._default_shell is None:
             if self._platform == 'windows':
                 self._default_shell = 'cmd'
@@ -301,7 +303,7 @@ class DockerExecutor(Executor):
             platform=self._platform,
             image=self._conf.get('image'),
             dockerfile=dockerfile,
-            env=self._conf.get('env', {}),
+            env=self.env_vars,
             mac_address=self._conf.get('mac_address', None),
             devices=self._conf.get('devices', []),
             volumes=volumes

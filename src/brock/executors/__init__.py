@@ -1,5 +1,5 @@
 import hashlib
-from typing import Optional, Union, Sequence
+from typing import Optional, Union, Sequence, Dict, Any
 from brock.log import get_logger
 from brock.config.config import Config
 from brock.exception import ExecutorError
@@ -21,6 +21,12 @@ class Executor:
         self._conf = config.executors.get(name)
         self._default_shell = None
 
+        self._env_vars = {
+            'BROCK_HOST_PATH': config.work_dir,
+            'BROCK_HOST_PROJECT_PATH': config.base_dir,
+            'BROCK_RELATIVE_PATH': config.work_dir_rel,
+        }
+
         self.help = ''
 
         if self._conf is not None:
@@ -30,6 +36,10 @@ class Executor:
     @property
     def default_shell(self) -> Optional[str]:
         return self._default_shell
+
+    @property
+    def env_vars(self) -> Dict:
+        return self._env_vars
 
     def sync_in(self):
         '''Synchronizes local data to executor if needed'''
