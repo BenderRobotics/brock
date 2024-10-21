@@ -76,6 +76,9 @@ setup(
     install_requires=[
         "colorama>=0.4.1",
         "click",
+        "hiyapyco",
+        "schema",
+        "munch"
     ],
     zip_safe=False
 )

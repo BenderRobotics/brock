@@ -3,7 +3,7 @@ import click
 import logging.config
 from click.exceptions import ClickException
 
-from brock.exception import PackageException
+from brock.exception import BaseBrockException
 from brock import __version__
 from .commands import init, start, stop, run
 
@@ -44,7 +44,7 @@ def main(args=None):
         exit(ex.exit_code)
     except RuntimeError as ex:
         pass  # * Exit and Abort from click
-    except PackageException as ex:
+    except BaseBrockException as ex:
         if len(ex.message) > 0:
             log.error(ex.message)
         exit(ex.ERROR_CODE)
