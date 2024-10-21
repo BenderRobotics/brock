@@ -4,19 +4,19 @@ import brock.log as log
 
 
 class State:
-    def __init__(self):
+
+    def __init__(self, project):
         self.verbosity = 0
         self.no_color = False
+        self.project = project
 
 
-pass_state = click.make_pass_decorator(State, ensure=True)
+pass_state = click.make_pass_decorator(State)
 
 
 def verbosity(f):
-    def callback(ctx, param, value):
-        state = ctx.ensure_object(State)
-        state.verbosity = value
 
+    def callback(ctx, param, value):
         if value == 0:
             log.VERBOSITY = log.INFO
         elif value == 1:
@@ -24,27 +24,38 @@ def verbosity(f):
         else:
             log.VERBOSITY = log.DEBUG
 
+        state = ctx.find_object(State)
+        if state:
+            state.verbosity = value
+            state.project.update_logger()
+
         return value
 
     return click.option(
-        '-v', '--verbose', count=True, help="Set logging verbosity",
-        expose_value=False, callback=callback
+        '-v', '--verbose', count=True, help='Set logging verbosity', expose_value=False, callback=callback
     )(f)
 
 
 def no_color(f):
-    def callback(ctx, param, value):
-        state = ctx.ensure_object(State)
-        state.no_color = value
 
+    def callback(ctx, param, value):
         if value:
             log.LOGGER = 'normal'
+
+        state = ctx.find_object(State)
+        if state:
+            state.no_color = value
+            state.project.update_logger()
 
         return value
 
     return click.option(
-        '--no-color', is_flag=True, help="Disable default color output",
-        multiple=False, expose_value=False, callback=callback
+        '--no-color',
+        is_flag=True,
+        help='Disable default color output',
+        multiple=False,
+        expose_value=False,
+        callback=callback
     )(f)
 
 

@@ -1,7 +1,6 @@
 import os
 import sys
 
-
 if __name__ == '__main__':
     if __package__ == '':
         # To be able to run 'python wheel-0.9.whl/wheel':

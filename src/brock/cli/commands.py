@@ -1,95 +1,55 @@
 import click
+from typing import Optional
 
-from brock.log import getLogger
 from brock.exception import UsageError
-from brock.config.config import Config
-from brock.toolchain.toolchain import Toolchain
-from .shared import shared_arguments, pass_state
+from .shared import shared_arguments, State, pass_state
+
+
+def create_command(cmd: str, help: Optional[str] = None):
+    '''Returns click command function for brock commands'''
+
+    @click.command(name=cmd, help=help)
+    @shared_arguments
+    @pass_state
+    def f(state):
+        return state.project.exec(cmd)
+
+    return f
 
 
 @click.command()
+@click.argument('executor', required=False)
 @shared_arguments
 @pass_state
-def status(state):
-    log = getLogger()
-    config = Config()
-
-    log.info(f"Toolchain status:")
-
-    toolchain = Toolchain(config)
-    toolchain.get_state()
-
-@click.command()
-@shared_arguments
-@pass_state
-def init(state):
-    log = getLogger()
-    config = Config()
-
-    log.info(f"Initializing toolchain")
-
-    toolchain = Toolchain(config)
-    toolchain.pull()
-
-@click.command()
-@shared_arguments
-@pass_state
-def start(state):
-    log = getLogger()
-    config = Config()
-
-    log.info(f"Starting toolchain")
-
-    toolchain = Toolchain(config)
-    toolchain.start()
-
-@click.command()
-@shared_arguments
-@pass_state
-def stop(state):
-    log = getLogger()
-    config = Config()
-
-    log.info(f"Stopping toolchain")
-
-    toolchain = Toolchain(config)
-    toolchain.stop()
-
-@click.command()
-@shared_arguments
-@pass_state
-def restart(state):
-    log = getLogger()
-    config = Config()
-
-    log.info(f"Restarting toolchain")
-
-    toolchain = Toolchain(config)
-    toolchain.stop()
-    toolchain.start()
-
-@click.command(context_settings=dict(
-    ignore_unknown_options=True,
-    allow_extra_args=True,
-))
-@click.pass_context
-@shared_arguments
-@pass_state
-def exec(state, ctx):
-    log = getLogger()
-    config = Config()
-
-    if ctx.args:
-        cmd = ' '.join(ctx.args)
+def shell(state: State, executor=None):
+    '''Open shell in executor'''
+    if not executor:
+        executor = state.project.get_default_executor()
+        if not executor:
+            raise UsageError('Multiple executors available, you have to specify which one to use')
+    elif executor[0] != '@':
+        raise UsageError('Unknown executor name format, use @name')
     else:
-        try:
-            cmd = config.toolchain.default_cmd
-        except AttributeError:
-            raise UsageError("Command not specified")
+        executor = executor[1:]
 
-    log.info(f"Executing command")
+    return state.project.shell(executor)
 
-    toolchain = Toolchain(config)
-    exit_code = toolchain.exec(cmd)
 
-    return exit_code
+@click.command()
+@click.argument('input', nargs=-1, type=click.Path())
+@shared_arguments
+@pass_state
+def exec(state, input=None):
+    '''Run command in executor'''
+    if input[0][0] != '@':
+        executor = state.project.get_default_executor()
+        if not executor:
+            raise UsageError('Multiple executors available, you have to specify which one to use')
+        executor = '@' + executor
+        command = input
+    else:
+        executor = input[0]
+        command = input[1:]
+
+    executor = executor[1:]
+    return state.project.exec_raw(' '.join(command), executor)

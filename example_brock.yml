@@ -1,0 +1,53 @@
+version: 0.0.2                # minimum Brock version required to use this config
+project: someprojectname      # name of the project
+help: "brock --help message"  # optional
+commands:                     # optional
+  default: build              # optional - default command to run when no command specified
+  clean:
+    default_executor: atollic # optional - default executor to use for this command
+    chdir: foo/bar            # optional - switch to this directory relative to base config prior execution
+    help: "Help message for this command"   # optional - help to be show in brock --help
+    steps:
+      - make clean            # run `make clean` in default executor (overriden to atollic here)
+  build:
+    depends_on:               # optinal - list of commands to run prior steps execution
+      - clean
+    steps:
+      - "@atollic make"       # run `make` command in atollic executor
+      - make tests            # run `make tests` in python (set as default) executor
+      - "@host echo 'Building finished'"  # run command on the host computer
+  rebuild:
+    depends_on:               # dependencies only command, no steps need to be defined
+      - clean
+      - build
+
+executors:
+  default: python             # optional - default executor, when not defined @host is used
+  atollic:
+    type: docker              # type of the executor, each type has a different arguments
+    help: "Executor --help message" # optional
+    dockerfile: path/to/Dockerfile  # build custom image from docker file
+    platform: windows         # optional - linux assumed by default
+    env:                      # optional - env variables to pass to container
+      SOME_VAR: foo
+      OTHER_VAR: 123
+    devices:                  # optional - pass devices to windows containers (isolation=process only)
+      # https://docs.microsoft.com/en-us/virtualization/windowscontainers/deploy-containers/hardware-devices-in-containers
+      - class/{interface class GUID}
+  python:
+    type: docker
+    image: python:3.9         # use image from registry
+    sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under windows
+      type: rsync             # only rsync mode currently supported
+      exclude:                # optional - directories to exclude from syncing
+        - foo/bar
+    devices:                  # optional - mount devices to container - works only for linux containers on linux host
+      - /dev/ttyUSB0:/dev/ttyUSB0:rwm   # <host_path>:<container_path>:<cgroup_permissions>
+    prepare:                  # optional, commands to run after starting a container
+      - pip install -r requirements.txt
+      - echo "Foo bar"
+  remote:
+    type: ssh
+    host: somesite.example.com:1235 # SSH host to run the commands on
+    username: foobar          # optional - user on the remote machine
+    password: strongpassword  # optional - password for the user

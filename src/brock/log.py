@@ -38,7 +38,8 @@ class ColoredStreamHandler(StreamHandler):
 
 
 class DefaultFormatter(logging.Formatter):
-    def __init__(self, fmt="%(message)s"):
+
+    def __init__(self, fmt='%(message)s'):
         logging.Formatter.__init__(self, fmt)
 
     def format(self, record):
@@ -127,7 +128,8 @@ logging._levelToName[STDERR] = 'STDERR'
 logging._nameToLevel['STDERR'] = STDERR
 
 
-class Logger(logging.getLoggerClass()):
+class Logger(logging.Logger):
+
     def extra_info(self, msg, *args, **kwargs):
         """
         Log 'msg % args' with severity 'EXTRA_INFO'.
@@ -165,7 +167,6 @@ class Logger(logging.getLoggerClass()):
             self._log(STDERR, msg, args, **kwargs)
 
 
-logging.Logger
 logging.setLoggerClass(Logger)
 
 
