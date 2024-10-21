@@ -40,6 +40,7 @@ class Toolchain:
         if self._volume_sync == "rsync":
             self._rsync_name = f"{self._name}-rsync"
             self._rsync_volume_name = f"{self._name}-rsync-volume"
+        self._sync_exclude = config.toolchain.get("sync_exclude", [])
 
         self._log = getLogger()
         self._docker = docker.from_env()
@@ -246,6 +247,9 @@ class Toolchain:
             f"{self._HOST_PATH}/{self._work_dir_rel}")
 
     def _rsync(self, src, dest, options=['-a', '--delete']):
+        for exclude in self._sync_exclude:
+            options.append(f"--exclude '{exclude}'")
+
         exit_code = self._exec_command(
             f"{self._rsync_name}",
             f"rsync {' '.join(options)} {src}/ {dest}", "/")

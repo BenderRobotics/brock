@@ -23,6 +23,7 @@ class Config(Munch):
             Optional('volume_sync'): And(
                 str, Use(str.lower),
                 lambda s: s in ('rsync', 'no')),
+            Optional('sync_exclude'): [str],
             Optional('default_cmd'): And(Use(str))
         }
     }
