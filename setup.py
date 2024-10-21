@@ -13,16 +13,6 @@ def read(rel_path):
         return fp.read()
 
 
-def get_version(rel_path):
-    # type: (str) -> str
-    for line in read(rel_path).splitlines():
-        if line.startswith('__version__'):
-            # __version__ = "0.9"
-            delimiter = '"' if '"' in line else "'"
-            return line.split(delimiter)[1]
-    raise RuntimeError('Unable to find version string.')
-
-
 def package_files(directory):
     """ Loads recursively files in given directory """
     paths = []
@@ -36,7 +26,12 @@ long_description = read('README.md')
 
 setup(
     name='brock',
-    version=get_version('src/brock/__init__.py'),
+    use_scm_version={
+        'version_file': 'src/brock/__version__.py',
+        'version_scheme': 'guess-next-dev',
+        'local_scheme': 'node-and-date',
+        'root': '.',
+    },
     description='Brock',
     long_description=long_description,
     classifiers=[
@@ -68,12 +63,14 @@ setup(
     install_requires=[
         'markupsafe==2.0.1',
         'colorama>=0.4.1',
-        'click',
+        'click>=7.1.2',
         'hiyapyco',
         'schema',
+        'setuptools_scm>=7.0.0',
         'munch',
         'fabric',
-        'docker',
+        'docker>=6.0.1',
+        'sentry-sdk~=1.39',
     ],
     zip_safe=False
 )

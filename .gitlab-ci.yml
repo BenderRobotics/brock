@@ -69,6 +69,9 @@ test-unit:
   tags:
     - docker
   script:
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
     - pip install -e .
     - pip install pytest pytest-cov
     - pytest tests/
@@ -90,6 +93,8 @@ build:
     expire_in: 30 days
     reports:
       dotenv: variables.env
+  before_script:
+    - pip install -U setuptools setuptools_scm
   script:
     - pip install wheel
     - VERSION=$(python setup.py --version)

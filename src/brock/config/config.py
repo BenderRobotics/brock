@@ -109,10 +109,10 @@ class Config(Munch):
 
         current_ver = __version__.split('.')
         config_ver = str(config['version']).split('.')
-        for pos, val in enumerate(current_ver):
-            if config_ver[pos] < val:
+        for pos, val in enumerate(current_ver[0:3]):
+            if int(config_ver[pos]) < int(val):
                 break
-            if config_ver[pos] > val:
+            if int(config_ver[pos]) > int(val):
                 raise ConfigError(
                     f'Current config requires Brock of version at least {config["version"]}, you are using {__version__}'
                 )

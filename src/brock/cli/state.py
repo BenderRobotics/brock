@@ -1,6 +1,8 @@
 import click
 
 import brock.log as log
+from brock import __version__
+from brock.cli.analytics import init_analytics
 
 
 class State:
@@ -25,6 +27,16 @@ def set_verbosity(ctx, param, value):
         state.verbosity = value
 
     return value
+
+
+def set_analytics(ctx, param, analytics_disabled):
+    if not analytics_disabled:
+        init_analytics(False)
+
+
+def set_analytics_dev(ctx, param, enable_dev_analytics):
+    if enable_dev_analytics:
+        init_analytics(True)
 
 
 def set_no_color(ctx, param, value):

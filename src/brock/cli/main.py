@@ -5,9 +5,11 @@ import logging.config
 from munch import Munch
 from typing import Dict, Tuple
 from click.exceptions import ClickException
-from .state import State, set_verbosity, set_no_color
+from click_constrained_option import ConstrainedOption
+from .state import State, set_verbosity, set_no_color, set_analytics, set_analytics_dev
 
 from brock.exception import BaseBrockException, ConfigError, UsageError
+from brock.cli.analytics import init_analytics
 from brock.project import Project
 from brock.config.config import Config
 from brock import __version__
@@ -37,6 +39,27 @@ class CustomCommandGroup(click.Group):
 
     def list_commands(self, ctx):
         return self.commands
+
+
+def analytics_options_decorator(func):
+    if 'dev' not in __version__:
+        return click.option(
+            '--disable-analytics',
+            is_flag=True,
+            expose_value=False,
+            default=False,
+            callback=set_analytics,
+            help='Disable analytics features.'
+        )(func)
+    else:
+        return click.option(
+            '--enable-dev-analytics',
+            is_flag=True,
+            expose_value=False,
+            default=False,
+            callback=set_analytics_dev,
+            help='Force enable analytics during development.'
+        )(func)
 
 
 @click.group(cls=CustomCommandGroup, invoke_without_command=True)
@@ -69,8 +92,9 @@ class CustomCommandGroup(click.Group):
     expose_value=False,
     callback=set_no_color
 )
+@analytics_options_decorator
 @click.pass_context
-def cli(ctx, stop, update, restart, status):
+def cli(ctx, stop, update, restart, status, **kwargs):
     state = ctx.find_object(State)
     # allow running --help and --version even if config parsing failed
     if state.error:
