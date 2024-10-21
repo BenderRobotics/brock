@@ -28,7 +28,15 @@ class HostExecutor(Executor):
             else:
                 self._default_shell = 'sh'
 
-    def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
+    def exec(
+        self,
+        command: Union[str, Sequence[str]],
+        chdir: Optional[str] = None,
+        env_options: Optional[dict] = None
+    ) -> int:
+        if env_options is not None:
+            os.environ.update(env_options)
+
         os.environ['PYTHONUNBUFFERED'] = '1'
 
         self._log.extra_info(f'Executing command on host: {command}')

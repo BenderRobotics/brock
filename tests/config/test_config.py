@@ -21,7 +21,10 @@ def test_example_config():
     assert config.commands.clean.steps == ['make clean']
 
     assert config.commands.build.depends_on == ['clean']
-    assert config.commands.build.steps == ['@atollic make', 'make tests', '@host echo \'Building finished\'']
+    assert config.commands.build.steps == [
+        '@atollic make', 'make tests', '@host echo \'Building finished\'', 'run ${VERY_FAST}', 'run ${VERY_SLOW}',
+        'run ${SPEED}'
+    ]
 
     assert config.commands.rebuild.depends_on == ['clean', 'build']
 

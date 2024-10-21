@@ -72,5 +72,6 @@ setup(
         'docker>=6.0.1',
         'sentry-sdk~=1.39',
     ],
+    extras_require={'test': ['pytest', 'pytest-cov']},
     zip_safe=False
 )

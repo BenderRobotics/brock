@@ -61,7 +61,12 @@ class Executor:
     def update(self):
         pass
 
-    def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
+    def exec(
+        self,
+        command: Union[str, Sequence[str]],
+        chdir: Optional[str] = None,
+        env_options: Optional[dict] = None
+    ) -> int:
         raise NotImplementedError
 
     def shell(self) -> int:

@@ -1,6 +1,7 @@
 import re
 from munch import Munch
 from typing import Dict, List, Optional
+import os
 
 from brock.log import get_logger
 from brock.exception import ConfigError, UsageError
@@ -9,6 +10,27 @@ from brock.executors import Executor
 from brock.executors.host import HostExecutor
 from brock.executors.docker import DockerExecutor
 from brock.executors.ssh import SshExecutor
+
+
+class Option:
+
+    def __init__(self, name: str, option_dict: dict):
+        self.name = name
+        self.argument = option_dict.get('argument', None)
+        self.flag = option_dict.get('flag', None)
+        self.help = option_dict.get('help', None)
+        self.default = option_dict.get('default', None)
+        self.choice = option_dict.get('choices', [])
+        self.variable = option_dict.get('variable', None)
+        self.short_name = option_dict.get('short_name', None)
+        self.option = option_dict.get('option', False)
+        self.required = option_dict.get('required', False)
+
+        # Renaming option-name to OPTION_NAME
+        if self.variable is None:
+            self.env_name = name.upper().replace('-', '_')
+        else:
+            self.env_name = self.variable
 
 
 class Command:
@@ -28,6 +50,8 @@ class Command:
 
         self.name = name
         self.help = config.get('help', '')
+        self.config_options = config.get('options', None)
+        self.options = {}
 
         steps = []
         for step in config.get('steps', []):
@@ -37,7 +61,12 @@ class Command:
                 steps.append(step)
         self._steps = steps
 
-    def exec(self, project) -> int:
+        if self.config_options is not None:
+            option_dict = Munch.toDict(self.config_options)
+            for option in option_dict:
+                self.options[option] = Option(option, option_dict[option])
+
+    def exec(self, project, step_options, **kwargs) -> int:
         for dependency in self._depends_on:
             exit_code = project.exec(dependency)
             if exit_code != 0:
@@ -46,19 +75,21 @@ class Command:
         self._log.extra_info(f'Executing command {self.name}')
 
         for step in self._steps:
-            exit_code = self._exec_step(project, step)
+            exit_code = self._exec_step(project, step, step_options)
 
             if exit_code != 0:
                 return exit_code
 
         return exit_code
 
-    def _exec_step(self, project, step) -> int:
+    def _exec_step(self, project, step, step_options) -> int:
+        env_options = {}
+        if step_options is not None:
+            env_options = self._get_options(step_options)
         if type(step) is str:
             res = re.search(r'(?:^@(\w+) )?(.*)', step)
             if res is None:
                 raise ConfigError(f'Unknown step format: {step}')
-
             executor = res.group(1)
             command = res.group(2)
             if not executor:
@@ -71,8 +102,36 @@ class Command:
             command = self._get_shell_command(step.get('script'), shell)
         else:
             raise ConfigError(f'Unexpected step type: {type(step)}')
+        return project.exec_raw(command, executor, self._chdir, env_options=env_options)
 
-        return project.exec_raw(command, executor, self._chdir)
+    def _get_options(self, step_options):
+        env_options = {}
+        for step_opt in step_options.values():
+            for opt, vals in self.options.items():
+                if '*' == vals.argument:
+                    if step_options[opt.replace('-', '_').lower()] == step_opt:
+                        if isinstance(step_opt, tuple):
+                            separator = ' '
+                            new_step_opt = separator.join(word for word in step_opt if word)
+                            env_options[vals.env_name] = new_step_opt
+                        else:
+                            env_options[vals.env_name] = step_opt
+                if vals.flag is not None:
+                    if vals.flag == step_opt:
+                        env_options[vals.env_name] = vals.flag
+                elif vals.argument is not None and '*' != vals.argument:
+                    try:
+                        if step_options[opt.replace('-', '_').lower()] == step_opt:
+                            env_options[vals.env_name] = step_opt
+                    except KeyError:
+                        continue
+                elif vals.option:
+                    try:
+                        if step_options[opt.replace('-', '_').lower()] == step_opt:
+                            env_options[vals.env_name] = step_opt
+                    except KeyError:
+                        continue
+        return env_options
 
     def _get_shell_command(self, script, shell) -> List[str]:
         if shell in ('sh', 'bash', 'zsh', 'powershell'):
@@ -116,7 +175,6 @@ class Project:
         if self._default_command is None:
             if len(config.commands) == 1:
                 self._default_command = next(iter(config.commands))
-
         self._executors['host'] = HostExecutor(config, 'host')
         for name, executor in config.executors.items():
             if name == 'default':
@@ -127,7 +185,6 @@ class Project:
                 self._executors[name] = SshExecutor(config, name)
             else:
                 raise ConfigError(f"Unknown executor type '{executor.type}'")
-
         if self._default_executor is None:
             if len(config.executors) == 0:
                 self._default_executor = 'host'
@@ -186,7 +243,7 @@ class Project:
         for executor in self._get_selected_executors(executor_name):
             executor.update()
 
-    def exec(self, command: Optional[str] = None) -> int:
+    def exec(self, command: Optional[str] = None, env_options: Optional[dict] = None) -> int:
         if command is None:
             if self._default_command is None:
                 raise UsageError('No default command defined')
@@ -195,9 +252,15 @@ class Project:
 
         if command not in self._commands:
             raise UsageError(f'Unknown command {command}')
-        return self._commands[command].exec(self)
+        return self._commands[command].exec(self, env_options)
 
-    def exec_raw(self, command: str, executor_name: Optional[str] = None, chdir: Optional[str] = None) -> int:
+    def exec_raw(
+        self,
+        command: str,
+        executor_name: Optional[str] = None,
+        chdir: Optional[str] = None,
+        env_options: Optional[dict] = None
+    ) -> int:
         if not executor_name:
             if self._default_executor:
                 executor_name = self._default_executor
@@ -211,7 +274,7 @@ class Project:
                 self._executors[self._prev_executor].sync_out()
             self._executors[executor_name].sync_in()
             self._prev_executor = executor_name
-        return self._executors[executor_name].exec(command, chdir)
+        return self._executors[executor_name].exec(command=command, chdir=chdir, env_options=env_options)
 
     def shell(self, executor_name: str) -> int:
         if executor_name not in self._executors:

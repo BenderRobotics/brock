@@ -5,7 +5,6 @@ import logging.config
 from munch import Munch
 from typing import Dict, Tuple
 from click.exceptions import ClickException
-from click_constrained_option import ConstrainedOption
 from .state import State, set_verbosity, set_no_color, set_analytics, set_analytics_dev
 
 from brock.exception import BaseBrockException, ConfigError, UsageError
@@ -14,7 +13,7 @@ from brock.project import Project
 from brock.config.config import Config
 from brock import __version__
 from brock.log import get_logger, init_logging
-from .commands import create_command, shell, exec
+from .commands import create_command, shell, exec, create_command_with_options
 
 
 class CustomCommandGroup(click.Group):
@@ -142,7 +141,10 @@ def main(args=None):
         if project:
             for name, cmd in project.commands.items():
                 help = cmd.help + (' (default)' if name == project.default_command else '')
-                cli.add_command(create_command(name, help.strip()))
+                if cmd.options:
+                    cli.add_command(create_command_with_options(name, cmd.options, help.strip()))
+                else:
+                    cli.add_command(create_command(name, help.strip()))
             cli.help = config.get('help', '')
 
             executors = []
@@ -153,7 +155,7 @@ def main(args=None):
 
         cli_error = None
         try:
-            result = cli(obj=state, standalone_mode=False)
+            result = cli(obj=state, standalone_mode=False, args=args)
         except RuntimeError:
             # * Exit and Abort from click
             result = None

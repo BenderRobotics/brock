@@ -23,6 +23,31 @@ class Config(Munch):
                 Optional('chdir'): str,
                 Optional('help'): str,
                 Optional('depends_on'): [str],
+                Optional('options'): {
+                    Optional(str):
+                        Or({
+                            'flag': Use(str),
+                            Optional('default'): any,
+                            Optional('short_name'): any,
+                            Optional('variable'): str,
+                            Optional('help'): str
+                        }, {
+                            'argument': Use(str),
+                            Optional('default'): any,
+                            Optional('required'): bool,
+                            Optional('choices'): [any],
+                            Optional('variable'): str,
+                            Optional('help'): str
+                        }, {
+                            Optional('option', default=True): Use(str),
+                            Optional('default'): any,
+                            Optional('short_name'): any,
+                            Optional('choices'): [any],
+                            Optional('variable'): str,
+                            Optional('required'): bool,
+                            Optional('help'): str
+                        })
+                },
                 Optional('steps'): [Or(str, {
                     Optional('executor'): str,
                     Optional('shell'): str,

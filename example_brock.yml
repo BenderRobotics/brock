@@ -12,10 +12,29 @@ commands:                     # optional
   build:
     depends_on:               # optinal - list of commands to run prior steps execution
       - clean
+    options:
+      very-fast:
+        argument: 1           # the order of the argument
+        default: fast         # default value that is run automatically
+        help: I am fast       # help string which can be seen when: brock build very-fast --help
+      fast_as_lightning:
+        argument: '*'          # unlimited number of arguments in CLI is accepted and assigned to this argument
+        default: fastest       # default value that is run automatically
+        help: I am the fastest # help string which can be seen when: brock build very-fast --help
+      very-slow:
+        flag: --slow          # flag value used
+        short_name: -s        # can be used when calling brock: brock build -s
+      speed:
+        help: I am neither flag nor argument
+        choices: [very_slow, slow, medium, fast, fastaf]
     steps:
       - "@atollic make"       # run `make` command in atollic executor
       - make tests            # run `make tests` in python (set as default) executor
       - "@host echo 'Building finished'"  # run command on the host computer
+      - run ${VERY_FAST}    # expected output: run fast
+      - run ${VERY_SLOW}    # expected output: run --slow
+      - run ${SPEED}        # needs to be specified when calling brock: brock build --speed=slow, checks whether the
+                            # value is in the choices list if provided and then expected output is: run --slow
   rebuild:
     depends_on:               # dependencies only command, no steps need to be defined
       - clean

@@ -209,9 +209,10 @@ class Container:
         self._log.debug(f'Work dir: {work_dir}')
 
         try:
-            exec_id = self._container.client.api.exec_create(self._container.id, command, workdir=work_dir)['Id']
+            exec_id = self._container.client.api.exec_create(
+                self._container.id, command, workdir=work_dir, environment=self._env
+            )['Id']
             output = self._container.client.api.exec_start(exec_id, stream=True, demux=True)
-
             try:
                 for chunk in output:
                     if chunk[0]:
@@ -237,8 +238,7 @@ class Container:
 
         self._log.extra_info(f'Starting shell ({shell}) in container {self.name}')
         self._log.debug(f'Work dir: {work_dir}')
-
-        return subprocess.run(command).returncode
+        return subprocess.run(command, env=self._env).returncode
 
 
 class DockerExecutor(Executor):
@@ -334,7 +334,7 @@ class DockerExecutor(Executor):
             ports=self._conf.get('ports'),
             devices=self._conf.get('devices', []),
             volumes=volumes,
-            run_endpoint=run_endpoint
+            run_endpoint=run_endpoint,
         )
 
     def sync_in(self):
@@ -391,7 +391,14 @@ class DockerExecutor(Executor):
     def update(self):
         self._container.update()
 
-    def exec(self, command: Union[str, Sequence[str]], chdir: Optional[str] = None) -> int:
+    def exec(
+        self,
+        command: Union[str, Sequence[str]],
+        chdir: Optional[str] = None,
+        env_options: Optional[dict] = None
+    ) -> int:
+        if env_options is not None:
+            self.env_vars.update(env_options)
         if not self._container.is_running():
             self._log.info('Executor not running -> starting')
             exit_code = self._start()

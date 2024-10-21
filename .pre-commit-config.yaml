@@ -25,6 +25,8 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports]
+        additional_dependencies: ["types-PyYAML==6.0.1"]
+        exclude: 'tests'
   - repo: meta
     hooks:
       - id: check-useless-excludes
