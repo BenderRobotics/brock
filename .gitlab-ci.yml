@@ -1,5 +1,8 @@
 stages:
   - test
+  - build
+  - deploy
+  - release
 
 workflow:
   rules:
@@ -7,6 +10,9 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - when: always
+
+variables:
+  PACKAGE_REGISTRY: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/brock"
 
 .code-quality:
   stage: test
@@ -47,3 +53,94 @@ code-quality-html:
     REPORT_FORMAT: "html"
   artifacts:
     paths: [gl-code-quality-report.html]
+
+build:
+  stage: build
+  image: python:3.9
+  tags:
+    - docker
+  artifacts:
+    paths:
+      - dist
+    expire_in: 30 days
+    reports:
+      dotenv: variables.env
+  script:
+    - pip install wheel
+    - VERSION=$(python setup.py --version)
+    - python setup.py bdist_wheel -d dist/
+    - python setup.py sdist -d dist/
+    - PACKAGE_NAME=$(cd dist && ls *.whl | head -1)
+    - ARCHIVE_NAME=$(cd dist && ls *.tar.gz | head -1)
+    - echo "PACKAGE_NAME=${PACKAGE_NAME}" >> variables.env
+    - echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> variables.env
+    - echo "VERSION=${VERSION}" >> variables.env
+  rules:
+    - if: $CI_COMMIT_TAG || $BUILD
+
+build-release-changelog:
+  image: python:3.9
+  stage: build
+  tags:
+    - docker
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/
+  script:
+    - VERSION=$(python setup.py --version)
+    - python build/get_changes.py v${VERSION} > changes.txt
+  artifacts:
+    paths:
+      - "changes.txt"
+    expire_in: 1 days
+
+deploy-wheel:
+  stage: deploy
+  needs:
+    - build
+  tags:
+    - docker
+  image: chartedcode/alpine-sftp-client
+  before_script:
+    - echo "$PYPI_KEY" | tr -d '\r' > ./ssh_key
+    - chmod 600 ./ssh_key
+  script:
+    - TAG_VERSION=${CI_COMMIT_TAG#"v"}
+    - test $VERSION = $TAG_VERSION
+    - |
+      sftp -i ./ssh_key -oStrictHostKeyChecking=no $PYPI_USER@$PYPI_HOST:/brock/ << EOF
+        put dist/*
+        quit
+      EOF
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+.*$/ && $PYPI_USER && $PYPI_KEY
+
+deploy-release:
+  stage: deploy
+  needs: [build]
+  image: curlimages/curl:latest
+  tags:
+    - docker
+  script:
+    - TAG_VERSION=${CI_COMMIT_TAG#"v"}
+    - test $VERSION = $TAG_VERSION
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "dist/${PACKAGE_NAME}" "${PACKAGE_REGISTRY}/${VERSION}/${PACKAGE_NAME}"'
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "dist/${ARCHIVE_NAME}" "${PACKAGE_REGISTRY}/${VERSION}/${ARCHIVE_NAME}"'
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  tags:
+    - docker
+  script:
+    - TAG_VERSION=${CI_COMMIT_TAG#"v"}
+    - test $VERSION = $TAG_VERSION
+    - DESCRIPTION=$(cat changes.txt)
+    - |
+      release-cli create --name "Release of Brock $CI_COMMIT_TAG" --tag-name $CI_COMMIT_TAG \
+        --description "$DESCRIPTION" \
+        --assets-link "{\"name\":\"${PACKAGE_NAME}\",\"url\":\"${PACKAGE_REGISTRY}/${VERSION}/${PACKAGE_NAME}\"}" \
+        --assets-link "{\"name\":\"${ARCHIVE_NAME}\",\"url\":\"${PACKAGE_REGISTRY}/${VERSION}/${ARCHIVE_NAME}\"}"
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/

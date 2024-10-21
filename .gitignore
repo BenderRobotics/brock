@@ -1,22 +1,16 @@
-# python
-__pycache__
+# Byte-compiled / optimized / DLL files
+__pycache__/
+**/*_cache
 
-# python wheel
-build
-dist
-*.pyc
-*.egg-info
-*.whl
+# Distribution / packaging
+**/build/**
+!**/build/*.py
+*.egg
+*.eggs
+*.egg-info/
+MANIFEST
 
-# sphinx docs
-docs/_build
+# Coverage reports
+**/.coverage_html/**
 
-# vs code
-.vs
-.vscode/
-
-# vs code python extensions
-.pylintrc
-
-# misc
-test.py
+src/brock/__version__.py
