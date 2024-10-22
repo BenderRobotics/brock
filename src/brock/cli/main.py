@@ -2,13 +2,11 @@ import sys
 import click
 import collections
 import logging.config
-from munch import Munch
 from typing import Dict, Tuple
 from click.exceptions import ClickException
 from .state import State, set_verbosity, set_no_color, set_analytics, set_analytics_dev
 
 from brock.exception import BaseBrockException, ConfigError, UsageError
-from brock.cli.analytics import init_analytics
 from brock.project import Project
 from brock.config.config import Config
 from brock import __version__
