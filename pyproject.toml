@@ -12,7 +12,7 @@ authors = [
    { name = "Bender Robotics s.r.o",  email = "opensource@benderrobotics.com" },
 ]
 
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 
 dynamic = ["version"]
 
@@ -22,7 +22,6 @@ classifiers=[
     'Programming Language :: Python',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3 :: Only',
-    'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
@@ -49,7 +48,7 @@ dependencies = [
     'setuptools_scm>=7.0.0',
     'munch',
     'fabric',
-    'docker>=6.0.1',
+    'docker>=7.1.0',
     'sentry-sdk~=1.39',
 ]
 
