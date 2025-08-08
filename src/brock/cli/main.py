@@ -61,14 +61,14 @@ def analytics_options_decorator(func):
 
 @click.group(cls=CustomCommandGroup, invoke_without_command=True)
 @click.version_option(__version__)
-@click.option('--stop', is_flag=False, flag_value='all', default=None, help='Stop project', metavar='[EXECUTOR]')
+@click.option('--stop', is_flag=False, flag_value='all', default=None, help='Stop project', metavar='EXECUTOR')
 @click.option(
     '--update',
     is_flag=False,
     flag_value='all',
     default=None,
     help='Update the executor (pull docker image, ...)',
-    metavar='[EXECUTOR]'
+    metavar='EXECUTOR'
 )
 @click.option(
     '-r',
@@ -77,7 +77,7 @@ def analytics_options_decorator(func):
     flag_value='all',
     default=None,
     help='Restart project (e.g. to reload config)',
-    metavar='[EXECUTOR]'
+    metavar='EXECUTOR'
 )
 @click.option('-s', '--status', is_flag=True, help='Show state of the project')
 @click.option('-v', '--verbose', count=True, help='Set logging verbosity', expose_value=False, callback=set_verbosity)

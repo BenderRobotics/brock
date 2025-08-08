@@ -123,40 +123,50 @@ def check_choice(option, choice_list):
 
 
 @click.command()
-@click.argument('executor', required=False)
+@click.option('--executor', '-e', default=None, help='Executor to open the shell in', metavar='EXECUTOR')
+@click.argument('executor_at', required=False, metavar='[@EXECUTOR]')
 @pass_state
-def shell(state: State, executor=None):
+def shell(state: State, executor=None, executor_at=None):
     '''Open shell in executor'''
-    if not executor:
+    if executor and executor_at:
+        raise UsageError('Specify the executor either with --executor parameter or @executor, not both')
+    elif executor:
+        pass
+    elif executor_at:
+        if not executor_at.startswith('@'):
+            raise UsageError('Unknown executor name format, use @name')
+        executor = executor_at[1:]
+    else:
         executor = state.project.default_executor
         if not executor:
             raise UsageError('Multiple executors available, you have to specify which one to use')
-    elif executor[0] != '@':
-        raise UsageError('Unknown executor name format, use @name')
-    else:
-        executor = executor[1:]
 
     return state.project.shell(executor)
 
 
 @click.command()
-@click.argument('input', nargs=-1, type=click.Path())
+@click.option('--executor', '-e', default=None, help='Executor to run the command in', metavar='EXECUTOR')
+@click.argument('executor_at', required=False, metavar='[@EXECUTOR]')
+@click.argument('input', nargs=-1)
 @pass_state
-def exec(state: State, input=None):
+def exec(state: State, executor=None, executor_at=None, input=None):
     '''Run command in executor'''
-    if len(input) == 0:
-        raise UsageError('No command specified')
-    elif input[0][0] != '@':
+    if executor_at and not executor_at.startswith('@'):
+        input = (executor_at,) + input
+        executor_at = None
+
+    if executor and executor_at:
+        raise UsageError('Specify the executor either with --executor parameter or @executor, not both')
+    elif executor:
+        pass
+    elif executor_at:
+        executor = executor_at[1:]
+    else:
         executor = state.project.default_executor
         if not executor:
             raise UsageError('Multiple executors available, you have to specify which one to use')
-        executor = '@' + executor
-        command = input
-    else:
-        if len(input) < 2:
-            raise UsageError('No command specified')
-        executor = input[0]
-        command = input[1:]
 
-    executor = executor[1:]
-    return state.project.exec_raw(' '.join(command), executor)
+    if len(input) == 0:
+        raise UsageError('No command specified')
+
+    return state.project.exec_raw(' '.join(input), executor)

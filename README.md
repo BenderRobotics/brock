@@ -68,6 +68,15 @@ $ brock exec @python 'python --version'
 Python 3.9.10
 ```
 
+In PowerShell, the '@' sign has a special meaning and you have to put the
+executor name into quotes or use the --executor/-e parameter instead:
+```shell
+$ brock exec "@python" 'python --version'
+Python 3.9.10
+$ brock exec -e python 'python --version'
+Python 3.9.10
+```
+
 Optionally, quotes or double-dash (`--`) can be used to avoid brock collecting
 options destined to the command launched by executor:
 ```shell
@@ -89,6 +98,8 @@ If using Docker executor, you can launch a shell using `brock shell` (default
 executor will be used if ommited):
 ```shell
 $ brock shell @gcc
+root@6bf119cb7b6a:/host# exit
+$ brock shell -e gcc
 root@6bf119cb7b6a:/host# exit
 exit
 ```
