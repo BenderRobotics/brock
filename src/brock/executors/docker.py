@@ -4,7 +4,7 @@ import subprocess
 import docker
 import time
 
-from typing import Optional, Union, Sequence, Dict, List, Any, Union
+from typing import Optional, Union, Sequence, Dict, List, Any, Union, Iterator
 from brock.log import get_logger
 from brock.executors import Executor
 from brock.config.config import Config
@@ -118,6 +118,23 @@ class Container:
                 except docker.errors.APIError as ex:
                     raise ExecutorError(f'Failed to create volume: {ex}')
 
+    def _delete_volumes(self) -> None:
+        '''Deletes named volumes used by the container'''
+        try:
+            volumes = [x.name for x in self._docker.volumes.list()]
+        except docker.errors.APIError as ex:
+            raise ExecutorError(f'Failed to list volumes: {ex}')
+
+        for name in self._volumes:
+            if name not in volumes:
+                continue
+
+            self._log.extra_info(f'Deleting volume {name}')
+            try:
+                self._docker.volumes.get(name).remove(force=True)
+            except docker.errors.APIError as ex:
+                raise ExecutorError(f'Failed to delete volume: {ex}')
+
     def _build(self):
         self._log.info(f'Building Docker image from {self._dockerfile}')
         dockerdir = os.path.dirname(self._dockerfile)
@@ -191,6 +208,11 @@ class Container:
             return
         self._log.info(f'Stopping container {self.name}')
         self._container.stop()
+        try:
+            self._container.wait(timeout=60)
+        except ExecutorError:
+            pass
+        self._delete_volumes()
 
     def update(self) -> None:
         if self._dockerfile:
@@ -241,6 +263,93 @@ class Container:
         return subprocess.run(command, env=self._env).returncode
 
 
+class MutagenSync:
+    '''Mutagen sync session management'''
+
+    @staticmethod
+    def check_installed():
+        '''Check if Mutagen is installed and available in PATH.'''
+        try:
+            subprocess.run(['mutagen', 'version'], check=True, capture_output=True, text=True)
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                'Mutagen CLI is not found in PATH. '
+                'Install it from https://mutagen.io/downloads'
+            )
+
+    @staticmethod
+    def create(session_name: str, local_path: str, container_name: str, container_path: str, options: List[str] = []):
+        '''Creates a new Mutagen sync session.'''
+        cmd = ['mutagen', 'sync', 'create', '--name', session_name
+              ] + options + [local_path, f'docker://{container_name}{container_path}']
+        ret = subprocess.run(cmd, capture_output=True, text=True)
+        if ret.returncode != 0:
+            raise ExecutorError(f'Failed to create Mutagen sync session: {ret.stderr}')
+
+    @staticmethod
+    def list() -> Iterator[Dict[str, Any]]:
+        '''Returns a list of all active Mutagen sync sessions.'''
+        ret = subprocess.run(['mutagen', 'sync', 'list'], capture_output=True, text=True)
+        if ret.returncode != 0:
+            raise ExecutorError('Failed to list Mutagen sync sessions')
+
+        session: Dict[str, Any] = {}
+
+        for line in ret.stdout.splitlines():
+            line = line.strip()
+            if line.startswith('Name:'):
+                if session:
+                    session = {}
+                session['name'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Identifier:'):
+                session['identifier'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Alpha:'):
+                session['alpha'] = {}
+            elif line.startswith('Beta:'):
+                session['beta'] = {}
+            elif line.startswith('Status:'):
+                session['status'] = line.split(':', 1)[1].strip()
+            elif line.startswith('URL:') and 'alpha' in session and 'beta' not in session:
+                session['alpha']['url'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Connected:') and 'alpha' in session and 'beta' not in session:
+                session['alpha']['connected'] = line.split(':', 1)[1].strip() == 'Yes'
+            elif line.startswith('URL:') and 'beta' in session:
+                session['beta']['url'] = line.split(':', 1)[1].strip()
+            elif line.startswith('Connected:') and 'beta' in session:
+                session['beta']['connected'] = line.split(':', 1)[1].strip() == 'Yes'
+
+        if session:
+            yield session
+
+    @staticmethod
+    def get(session_name: str) -> Optional[Dict[str, Any]]:
+        '''Returns a specific Mutagen sync session by name.'''
+        return next((s for s in MutagenSync.list() if s['name'] == session_name), None)
+
+    @staticmethod
+    def wait(session_name: str, timeout: int = 900):
+        '''Waits for a specific Mutagen sync session to complete initial sync.'''
+        start = time.time()
+        while True:
+            if time.time() - start > timeout:
+                return False
+            session = MutagenSync.get(session_name)
+            if not session:
+                raise ExecutorError('Mutagen sync session not found')
+            elif session['status'] == 'Watching for changes':
+                break
+            time.sleep(1)
+        return True
+
+    @staticmethod
+    def terminate(session_name: str):
+        '''Terminates a specific Mutagen sync session.'''
+        cmd = ['mutagen', 'sync', 'terminate', session_name]
+        ret = subprocess.run(cmd, capture_output=True, text=True)
+        if ret.returncode != 0:
+            raise ExecutorError(f'Failed to terminate Mutagen sync session: {ret.stderr}')
+
+
 class DockerExecutor(Executor):
     '''Executor for docker based toolchains
 
@@ -284,20 +393,19 @@ class DockerExecutor(Executor):
             self._sync_type = self._conf.sync.type
         else:
             self._sync_type = None
+        self._sync_container = None
         self._synced_in = False
-        run_endpoint = None
         if self._sync_type == 'rsync':
             self._sync_exclude = self._conf.sync.get('exclude', [])
 
-            self._rsync_volume_name = f'{config.project}-rsync-volume-{self._hashed_base_dir}'
-            self._rsync_container = None
+            self._sync_volume_name = f'{config.project}-rsync-volume-{self._hashed_base_dir}'
 
-            self._rsync_container = Container(
+            self._sync_container = Container(
                 f'brock-{config.project}-rsync-{self._hashed_base_dir}',
                 platform='linux',
                 image='eeacms/rsync:2.3',
                 volumes={
-                    self._rsync_volume_name: {
+                    self._sync_volume_name: {
                         'bind': self._RSYNC_PATH,
                         'mode': 'rw'
                     },
@@ -307,16 +415,16 @@ class DockerExecutor(Executor):
                     }
                 }
             )
-            volumes = {self._rsync_volume_name: {'bind': self._mount_dir, 'mode': 'rw'}}
+            volumes = {self._sync_volume_name: {'bind': self._mount_dir, 'mode': 'rw'}}
         elif self._sync_type == 'mutagen':
             try:
-                contexts = docker.context.ContextAPI.contexts()
-                context = next(c for c in contexts if c.name == 'desktop-linux-mutagen')
-                run_endpoint = context.endpoints['docker']['Host']
-            except:
-                self._log.warning('Failed to get mutagen context, is Mutagen Extension for Docker Desktop installed?')
+                MutagenSync.check_installed()
+            except FileNotFoundError:
+                raise ExecutorError('Mutagen is not installed')
 
-            volumes = {self._base_dir: {'bind': self._mount_dir, 'mode': 'rw'}}
+            self._sync_volume_name = f'brock-{config.project}-{self.name}-mutagen-volume-{self._hashed_base_dir}'
+
+            volumes = {self._sync_volume_name: {'bind': self._mount_dir, 'mode': 'rw'}}
         else:
             volumes = {self._base_dir: {'bind': self._mount_dir, 'mode': 'rw'}}
 
@@ -334,20 +442,28 @@ class DockerExecutor(Executor):
             ports=self._conf.get('ports'),
             devices=self._conf.get('devices', []),
             volumes=volumes,
-            run_endpoint=run_endpoint,
         )
 
     def sync_in(self):
+        if not self._container.is_running():
+            self._log.info('Executor not running -> starting')
+            self._start()
+
         if self._sync_type is None:
             return
 
         if self._sync_type == 'rsync':
-            if self._rsync_container is None:
+            if self._sync_container is None:
                 return
             self._log.extra_info(f'Rsyncing data into docker volume')
             self._rsync(self._HOST_PATH, self._RSYNC_PATH)
         elif self._sync_type == 'mutagen':
-            pass
+            if not MutagenSync.get(self._sync_volume_name):
+                self._create_mutagen_session()
+
+            self._log.extra_info('Waiting for mutagen sync')
+            if not MutagenSync.wait(self._sync_volume_name):
+                self._log.warning('Mutagen sync timed out')
         else:
             raise ExecutorError('Unknown sync type')
 
@@ -358,12 +474,14 @@ class DockerExecutor(Executor):
             return
 
         if self._sync_type == 'rsync':
-            if self._rsync_container is None:
+            if self._sync_container is None:
                 return
             self._log.extra_info(f'Rsyncing data out of docker volume')
             self._rsync(self._RSYNC_PATH, self._HOST_PATH)
         elif self._sync_type == 'mutagen':
-            pass
+            self._log.extra_info('Waiting for mutagen sync')
+            if not MutagenSync.wait(self._sync_volume_name):
+                self._log.warning('Mutagen sync timed out')
         else:
             raise ExecutorError('Unknown sync type')
 
@@ -371,21 +489,25 @@ class DockerExecutor(Executor):
 
     def status(self) -> str:
         res = 'Stopped'
-        if self._container.is_running() and (self._rsync_container is None or self._rsync_container.is_running()):
+        if self._container.is_running() and (self._sync_container is None or self._sync_container.is_running()):
             res = 'Running'
         res += f'\n\t{self._container.name}'
-        if self._rsync_container is not None:
-            res += f'\n\t{self._rsync_container.name}'
+        if self._sync_container is not None:
+            res += f'\n\t{self._sync_container.name}'
         return res
 
     def stop(self):
         self._container.stop()
-        if 'sync' in self._conf and self._sync_type == 'rsync' and self._rsync_container:
-            self._rsync_container.stop()
+        if 'sync' in self._conf:
+            if self._sync_type == 'rsync' and self._sync_container:
+                self._sync_container.stop()
+            elif self._sync_type == 'mutagen':
+                if MutagenSync.get(self._sync_volume_name):
+                    self._log.extra_info(f'Terminating Mutagen sync session {self._sync_volume_name}')
+                    MutagenSync.terminate(self._sync_volume_name)
 
     def restart(self) -> int:
         self.stop()
-        time.sleep(1)
         return self._start()
 
     def update(self):
@@ -430,8 +552,11 @@ class DockerExecutor(Executor):
         if self._container.is_running():
             return 0
 
-        self.sync_in()
         self._container.start()
+
+        if not self._synced_in:
+            self.sync_in()
+
         for command in self._prepare:
             exit_code = self._container.exec(command, self._mount_dir)
             if exit_code != 0:
@@ -440,8 +565,17 @@ class DockerExecutor(Executor):
                 return exit_code
         return 0
 
+    def _create_mutagen_session(self):
+        self._log.info('Creating mutagen sync session')
+
+        options = self._sync_options if self._sync_options else []
+        if len(self._sync_exclude):
+            options.append(f'--ignore={"/*,".join(self._sync_exclude)}/*')
+
+        MutagenSync.create(self._sync_volume_name, self._base_dir, self._container.name, self._mount_dir, options)
+
     def _rsync(self, src: str, dest: str):
-        if self._rsync_container is None:
+        if self._sync_container is None:
             return 0
 
         if self._sync_options is not None:
@@ -459,7 +593,7 @@ class DockerExecutor(Executor):
         for exclude in self._sync_exclude:
             options.append(f"--exclude '{exclude}'")
 
-        exit_code = self._rsync_container.exec(f"rsync {' '.join(options)} {src}/ {dest}", '/')
+        exit_code = self._sync_container.exec(f"rsync {' '.join(options)} {src}/ {dest}", '/')
         if exit_code != 0:
             raise ExecutorError(f'Failed to rsync data')
         return exit_code

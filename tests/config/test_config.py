@@ -66,6 +66,8 @@ def test_example_config():
     assert config.executors.gcc.type == 'docker'
     assert config.executors.gcc.image == 'gcc'
     assert config.executors.gcc.sync.type == 'mutagen'
+    assert config.executors.gcc.sync.options == ['--ignore-vcs']
+    assert config.executors.gcc.sync.exclude == ['foo/bar']
 
     assert config.executors.remote.type == 'ssh'
     assert config.executors.remote.host == 'somesite.example.com:1235'

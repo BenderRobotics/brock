@@ -20,7 +20,7 @@ class HostExecutor(Executor):
         '''
         super().__init__(config, name)
 
-        self.help = 'Execute command on host computer'
+        self._help = 'Execute command on host computer'
 
         if self._default_shell is None:
             if platform.system() == 'Windows':

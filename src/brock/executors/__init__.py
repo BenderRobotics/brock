@@ -15,6 +15,8 @@ class Executor:
     def __init__(self, config: Config, name: str):
         self._log = get_logger()
 
+        self._name = name
+
         self._base_dir = config.base_dir
         self._hashed_base_dir = hashlib.md5(self._base_dir.encode('ascii')).hexdigest()
 
@@ -27,11 +29,19 @@ class Executor:
             'BROCK_RELATIVE_PATH': config.work_dir_rel,
         }
 
-        self.help = ''
+        self._help = ''
 
         if self._conf is not None:
             self._default_shell = self._conf.get('default_shell')
-            self.help = self._conf.get('help', '')
+            self._help = self._conf.get('help', '')
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def help(self) -> str:
+        return self._help
 
     @property
     def default_shell(self) -> Optional[str]:

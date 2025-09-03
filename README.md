@@ -151,15 +151,19 @@ configuration option `exclude` under `sync` section.
 
 #### Mutagen
 Another option to synchronize volumes on macOS or Windows is to use
-[Mutagen Extension](https://mutagen.io/documentation/docker-desktop-extension)
-for Docker Desktop. Before use, it must be installed first:
+[Mutagen](https://mutagen.io/). Before use, it must be installed first.
+On macOS, run `brew install mutagen-io/mutagen/mutagen`, on Windows,
+you have to [download](https://github.com/mutagen-io/mutagen/releases/latest)
+the appropriate release and add its contents to your path manually.
+Then, Mutagen daemon must be started:
 ```shell
-docker extension install mutagenio/docker-desktop-extension:latest
+$ mutagen daemon start
 ```
-Then, a cache must be created for each path which should be synchronized. Go to
-Docker Desktop -> Extensions -> Mutagen, click Create Cache and enter the
-project root path. Finally, configure the executor to use Mutagen
-volume synchronization (see `example_brock.yml`).
+If you wish to have the daemon start automatically on login, you can register
+the daemon on macOS or Windows using the following command:
+```shell
+mutagen daemon register
+```
 
 ### Devices in Docker executor
 The docker can use the system devices if passed correctly, however this only

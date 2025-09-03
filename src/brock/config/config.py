@@ -86,7 +86,11 @@ class Config(Munch):
                                 Optional('include'): [str],
                                 Optional('exclude'): [str],
                             },
-                            {'type': 'mutagen'},
+                            {
+                                'type': 'mutagen',
+                                Optional('options'): [str],
+                                Optional('exclude'): [str],
+                            },
                         ),
                     Optional('prepare'): [str],
                     Optional('default_shell'):

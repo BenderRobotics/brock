@@ -69,7 +69,7 @@ executors:                    # optional - if not present, only host executor ca
   python:
     type: docker
     image: python:3.9         # use image from registry
-    sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under windows
+    sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under macOS/Windows
       type: rsync             # rsync volume synchronization
       options:                # optional - rsync parameters
         - "-avm"
@@ -91,8 +91,12 @@ executors:                    # optional - if not present, only host executor ca
   gcc:
     type: docker
     image: gcc                # use image from registry
-    sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under windows
+    sync:                     # optional - sync files to container instead of direct mount for faster build times on linux containers under macOS/Windows
       type: mutagen           # mutagen volume synchronization
+      options:                # optional - mutagen sync parameters
+        - "--ignore-vcs"
+      exclude:                # optional - directories to exclude from syncing
+        - foo/bar
   remote:
     type: ssh
     host: somesite.example.com:1235 # SSH host to run the commands on
