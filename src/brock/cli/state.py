@@ -7,10 +7,10 @@ from brock.cli.analytics import init_analytics
 
 class State:
 
-    def __init__(self, project):
+    def __init__(self):
         self.verbosity = 0
         self.no_color = False
-        self.project = project
+        self.project = None
         self.error = None
 
 

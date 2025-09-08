@@ -59,6 +59,15 @@ def analytics_options_decorator(func):
         )(func)
 
 
+@click.command(context_settings=dict(ignore_unknown_options=True), add_help_option=False)
+@click.version_option(__version__)
+@click.option('-v', '--verbose', count=True, callback=set_verbosity)
+@click.argument('args', nargs=-1, type=click.UNPROCESSED)
+@click.pass_context
+def pre_cli(ctx, verbose, args):
+    pass
+
+
 @click.group(cls=CustomCommandGroup, invoke_without_command=True)
 @click.version_option(__version__)
 @click.option('--stop', is_flag=False, flag_value='all', default=None, help='Stop project', metavar='EXECUTOR')
@@ -80,7 +89,7 @@ def analytics_options_decorator(func):
     metavar='EXECUTOR'
 )
 @click.option('-s', '--status', is_flag=True, help='Show state of the project')
-@click.option('-v', '--verbose', count=True, help='Set logging verbosity', expose_value=False, callback=set_verbosity)
+@click.option('-v', '--verbose', count=True, help='Set logging verbosity', expose_value=False)
 @click.option(
     '--no-color',
     is_flag=True,
@@ -121,6 +130,16 @@ def main(args=None):
     log = get_logger()
     project = None
     exit_code = 0
+    state = State()
+
+    try:
+        pre_cli(obj=state, args=args)
+    except ClickException as ex:
+        log.error(ex.message)
+        exit(ex.exit_code)
+    except SystemExit as ex:
+        if ex.code == 0 and '--version' in args:
+            raise
 
     try:
         config_error = None
@@ -130,7 +149,7 @@ def main(args=None):
         except ConfigError as e:
             config_error = e
 
-        state = State(project)
+        state.project = project
         state.error = config_error
 
         cli.add_command(shell)
