@@ -119,7 +119,8 @@ class Config(Munch):
     def _load(self, configs: t.List[str]) -> Munch:
         try:
             self._log.extra_info('Merging config files')
-            config = hiyapyco.load(configs, method=hiyapyco.METHOD_MERGE)
+            config = hiyapyco.load(configs, method=hiyapyco.METHOD_MERGE, none_behavior=hiyapyco.NONE_BEHAVIOR_OVERRIDE)
+            config = self._remove_none(config)
             self._log.debug(f'Merged config: {config}')
         except Exception as ex:
             raise ConfigError(f'Failed to process config files: {ex}')
@@ -187,6 +188,15 @@ class Config(Munch):
         self._log.debug(f'Relative work dir: {self.work_dir_rel}')
 
         return config_files
+
+    @classmethod
+    def _remove_none(self, config):
+        if isinstance(config, dict):
+            return {k: self._remove_none(v) for k, v in config.items() if v is not None}
+        elif isinstance(config, list):
+            return [self._remove_none(v) for v in config]
+        else:
+            return config
 
     @classmethod
     def _split_path(cls, path):

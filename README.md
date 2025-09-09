@@ -36,6 +36,8 @@ parameters.
 The lowest priority config file determines the base directory which will be
 used as a working directory for the executor (e.g. mounted to docker, mounted
 over SSH). The commands should not access files outside this directory.
+Configuration directives specified in a higher-level config file can be removed
+(unset) in a subfolder by specifying the value as null.
 
 The list of all available commands is provided by `brock --help`, let's assume
 a command `test` was defined in the `.brock.yml`, you can run it like this:
