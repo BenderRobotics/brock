@@ -108,8 +108,11 @@ class Config(Munch):
     def __init__(self, configs: t.Optional[t.List[str]] = None, config_file_names: t.Optional[t.List[str]] = None):
         self._log = get_logger()
 
+        self.work_dir = os.getcwd().replace('\\', '/')
+
         if configs is None:
-            configs = self._scan_files(config_file_names)
+            all_configs = self._scan_files(config_file_names)
+            configs = self._scan_project_files(all_configs)
 
         merged_config = self._load(configs)
         validated_config = self._validate(merged_config)
@@ -119,6 +122,7 @@ class Config(Munch):
     def _load(self, configs: t.List[str]) -> Munch:
         try:
             self._log.extra_info('Merging config files')
+            self._log.debug(configs)
             config = hiyapyco.load(configs, method=hiyapyco.METHOD_MERGE, none_behavior=hiyapyco.NONE_BEHAVIOR_OVERRIDE)
             config = self._remove_none(config)
             self._log.debug(f'Merged config: {config}')
@@ -127,6 +131,16 @@ class Config(Munch):
 
         if config is None:
             raise ConfigError('Invalid config file: Config file is empty')
+
+        if os.path.exists(configs[0]):
+            self.base_dir = os.path.dirname(configs[0]).replace('\\', '/')
+        else:
+            self.base_dir = self.work_dir
+        self._log.debug(f'Base dir: {self.base_dir}')
+
+        common_prefix = os.path.commonprefix([self.work_dir, self.base_dir])
+        self.work_dir_rel = os.path.relpath(self.work_dir, common_prefix).replace('\\', '/')
+        self._log.debug(f'Relative work dir: {self.work_dir_rel}')
 
         return config
 
@@ -153,8 +167,6 @@ class Config(Munch):
         if file_names is None:
             file_names = ['.brock.yml', 'brock.yml', '.brock.yaml', 'brock.yaml']
 
-        self.work_dir = os.getcwd().replace('\\', '/')
-
         self._log.extra_info(f'Scanning config files, work dir: {self.work_dir}')
 
         config_files = []
@@ -180,14 +192,38 @@ class Config(Munch):
                 f"No config file ({', '.join(file_names)}) found in '{self.work_dir}' or parent directories"
             )
 
-        self.base_dir = os.path.dirname(config_files[0])
-        self._log.debug(f'Base dir: {self.base_dir}')
-
-        common_prefix = os.path.commonprefix([self.work_dir, self.base_dir])
-        self.work_dir_rel = os.path.relpath(self.work_dir, common_prefix).replace('\\', '/')
-        self._log.debug(f'Relative work dir: {self.work_dir_rel}')
-
         return config_files
+
+    def _scan_project_files(self, configs: t.List[str]) -> t.List[str]:
+        '''
+        Scan config files from the current working dir to the top until a config
+        with a project name is found. Continue further as long as the project name
+        is the same. Otherwise, break the loop and return the config files from
+        the last one with the specified project to the working dir.
+        '''
+
+        self._log.extra_info('Scanning project config files')
+
+        project = None
+        project_configs: t.List[str] = []
+        try:
+            for i in range(len(configs) - 1, -1, -1):
+                config = hiyapyco.load(
+                    configs[i], method=hiyapyco.METHOD_MERGE, none_behavior=hiyapyco.NONE_BEHAVIOR_OVERRIDE
+                )
+                if config:
+                    config = self._remove_none(config)
+                    if 'project' in config:
+                        self._log.debug(f'Found project {config["project"]} in config file {configs[i]}')
+                        if project is None or project == config['project']:
+                            project = config['project']
+                            project_configs = configs[i:]
+                        else:
+                            break
+        except Exception as ex:
+            raise ConfigError(f'Failed to process config file: {ex}')
+
+        return project_configs
 
     @classmethod
     def _remove_none(self, config):
