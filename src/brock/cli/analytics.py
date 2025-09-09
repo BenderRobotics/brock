@@ -23,7 +23,7 @@ def init_analytics(enable_dev_analytics: bool) -> None:
     release = None if enable_dev_analytics else brock.__version__
     sentry_sdk.init(
         # This is a public information
-        dsn='https://75fe6c1dbd9ffcffebc2a9df1bf793cd@sentry.benderrobotics.com/4',
+        dsn='https://64789e4ff393b8448f24bb8a7f8da2b8@o4508851532333056.ingest.de.sentry.io/4509989982961744',
         environment=env,
         release=release,
         include_local_variables=True,
