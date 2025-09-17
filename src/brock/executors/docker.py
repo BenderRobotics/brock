@@ -209,7 +209,7 @@ class Container:
         self._log.info(f'Stopping container {self.name}')
         self._container.stop()
         try:
-            self._container.wait(timeout=60)
+            self._container.wait(timeout=60, condition='removed')
         except ExecutorError:
             pass
         self._delete_volumes()
