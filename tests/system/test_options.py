@@ -34,10 +34,12 @@ def mock_config(config: str):
     return c
 
 
-def create_config(options, script: str):
+def create_config(options=None, script: str = None):
     command = deepcopy(command_template)
-    command['options'].update(options)
-    command['steps'][0]['script'] = script
+    if options:
+        command['options'].update(options)
+    if script:
+        command['steps'][0]['script'] = script
     project = deepcopy(project_template)
     project['commands'].update({'test_cmd': command})
     return mock_config(yaml.dump(project))
@@ -337,3 +339,10 @@ def test_brock_option_invalid(option, args, expected):
     config = create_config(option, f'printenv\n ret=$([[ "${{{expected}}}" != "" ]] && echo 1 || echo 0)\n exit $ret')
     ret = execute_brock(['test_cmd', *args], config)
     assert ret != 0, 'Brock failed to execute a command'
+
+
+def test_brock_stop():
+    """ Stop the executor at the end of the test. """
+    config = create_config()
+    ret = execute_brock(['--stop', 'alpine'], config)
+    assert ret == 0, 'Brock failed to execute a command'
