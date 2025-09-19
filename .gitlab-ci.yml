@@ -83,6 +83,21 @@ test-unit:
         coverage_format: cobertura
         path: coverage.xml
 
+test-brock-in-docker:
+  stage: test
+  image: python:3.9
+  tags:
+    - docker
+  script:
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install -e .
+    - exit_code=0
+    - brock -vvv test || exit_code=$?
+    - brock --stop all
+    - exit $exit_code
+
 build:
   stage: build
   image: python:3.9

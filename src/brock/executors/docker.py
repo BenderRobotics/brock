@@ -3,12 +3,13 @@ import sys
 import subprocess
 import docker
 import time
+import re
 
 from typing import Optional, Union, Sequence, Dict, List, Any, Union, Iterator
 from brock.log import get_logger
 from brock.executors import Executor
 from brock.config.config import Config
-from brock.exception import ConfigError, ExecutorError
+from brock.exception import ExecutorError
 
 
 class Container:
@@ -25,7 +26,8 @@ class Container:
         ports: Dict[Union[str, int], int] = {},
         devices: List[str] = [],
         volumes: Dict[str, Dict[str, Any]] = {},
-        run_endpoint: str = None
+        run_endpoint: str = None,
+        host_container_id: str = None
     ):
         self.name = name
         self._platform = platform
@@ -36,6 +38,7 @@ class Container:
         self._devices = devices
         self._volumes = volumes
         self._run_endpoint = run_endpoint
+        self._host_container_id = host_container_id
 
         self._log = get_logger()
 
@@ -62,15 +65,15 @@ class Container:
                 return docker.DockerClient(base_url=self._run_endpoint)
             else:
                 return docker.from_env()
-        except docker.errors.DockerException:
-            raise ExecutorError('Docker engine is not running')
+        except docker.errors.DockerException as ex:
+            raise ExecutorError(f'Docker engine is not running: {ex}')
 
     @property
     def _docker(self) -> docker.DockerClient:
         try:
             return docker.from_env()
-        except docker.errors.DockerException:
-            raise ExecutorError('Docker engine is not running')
+        except docker.errors.DockerException as ex:
+            raise ExecutorError(f'Docker engine is not running: {ex}')
 
     @property
     def _container(self):
@@ -102,13 +105,37 @@ class Container:
     def _create_volumes(self) -> None:
         '''Creates named volumes used by the container'''
         try:
-            volumes = map(lambda x: x.name, self._docker.volumes.list())
+            volumes = [x.name for x in self._docker.volumes.list()]
         except docker.errors.APIError as ex:
             raise ExecutorError(f'Failed to list volumes: {ex}')
 
+        if self._host_container_id is not None:
+            # Docker in Docker - all volumes tied to host container must be remapped to the host paths,
+            # becasue DinD uses the host Docker engine
+            try:
+                res = self._docker.api.inspect_container(self._host_container_id)
+                dind_mounts = res.get('Mounts', [])
+            except docker.errors.APIError as ex:
+                raise ExecutorError(f'Failed to inspect container: {ex}')
+        else:
+            dind_mounts = []
+
+        new_volumes = self._volumes.copy()
         for name in self._volumes:
-            # volume tied to physical path
-            if os.path.exists(name):
+            host_mount = False
+            for mount in dind_mounts:
+                src_path = mount['Source']
+                to_path = mount['Destination']
+                if os.path.commonpath((name, to_path)) == to_path:
+                    # volume tied to host container mount - remap the volume to the host path
+                    new_path = name.replace(to_path, src_path)
+                    self._log.debug(f'Volume {name} is tied to host container path {new_path}')
+                    del new_volumes[name]
+                    new_volumes[new_path] = self._volumes[name]
+                    host_mount = True
+                    break
+            if host_mount or os.path.exists(name):
+                # volume tied to host container or physical path
                 continue
 
             if name not in volumes:
@@ -117,6 +144,7 @@ class Container:
                     self._docker.volumes.create(name)
                 except docker.errors.APIError as ex:
                     raise ExecutorError(f'Failed to create volume: {ex}')
+        self._volumes = new_volumes
 
     def _delete_volumes(self) -> None:
         '''Deletes named volumes used by the container'''
@@ -372,6 +400,22 @@ class DockerExecutor(Executor):
 
         self.env_vars.update(self._conf.get('env', {}))
 
+        self._host_container_id = None
+        if self._platform == 'linux':
+            # detect if we are running inside a container - try to extract container ID from /proc/self/mountinfo
+            # Docker in Docker can only be used on Linux hosts
+            try:
+                with open('/proc/self/mountinfo', 'rb') as f:
+                    hostname_mount = re.compile(r'/containers/([a-z0-9]{64})/hostname')
+                    for line in f.readlines():
+                        m = hostname_mount.search(line.decode())
+                        if m:
+                            self._host_container_id = m.group(1)
+                            self._log.debug(f'Brock is running inside container {self._host_container_id[:12]}')
+                            break
+            except FileNotFoundError:
+                pass
+
         if self._default_shell is None:
             if self._platform == 'windows':
                 self._default_shell = 'cmd'
@@ -428,6 +472,10 @@ class DockerExecutor(Executor):
         else:
             volumes = {self._base_dir: {'bind': self._mount_dir, 'mode': 'rw'}}
 
+        if self._host_container_id is not None:
+            # for Docker in Docker, we need to mount the docker socket from the host
+            volumes['/var/run/docker.sock'] = {'bind': '/var/run/docker.sock', 'mode': 'rw'}
+
         dockerfile = None
         if 'dockerfile' in self._conf:
             dockerfile = os.path.join(self._base_dir, self._conf['dockerfile'])
@@ -442,6 +490,7 @@ class DockerExecutor(Executor):
             ports=self._conf.get('ports'),
             devices=self._conf.get('devices', []),
             volumes=volumes,
+            host_container_id=self._host_container_id,
         )
 
     def sync_in(self):

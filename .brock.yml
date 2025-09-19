@@ -4,17 +4,18 @@ project: brock
 executors:
   python:
     type: docker
-    image: python:3.7
+    image: python:3.9
     prepare:
-      - pip install -r requirements.txt
-      - pip install wheel pytest pytest-cov
+      - pip install -U setuptools setuptools_scm build wheel
 
 commands:
+  default: build
+
   build:
     steps:
-      - python setup.py bdist_wheel -d dist/
-      - python setup.py sdist -d dist/
+      - python -m build --sdist --wheel .
 
   test:
     steps:
+      - pip install -e ./[test]
       - pytest tests/
