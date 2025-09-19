@@ -13,14 +13,16 @@ workflow:
 
 variables:
   PACKAGE_REGISTRY: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/brock"
+  TOOLCHAINS_PATH: $CI_REGISTRY/br/toolchains
 
 pre-commit:
   stage: .pre
   image:
-    name: registry.benderrobotics.com/br/toolchains/pre-commit:2.17.0
+    name: $TOOLCHAINS_PATH/pre-commit:4.2.0
   tags:
     - docker
   script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
     - pre-commit run --all-files --show-diff-on-failure
 
 .code-quality:

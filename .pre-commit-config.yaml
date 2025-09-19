@@ -10,7 +10,7 @@ repos:
         entry: registry.benderrobotics.com/br/toolchains/yapf:0.43.0 yapf -i
         types: [python]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.2.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: check-docstring-first
